@@ -1,0 +1,85 @@
+/* You can add global styles to this file, and also import other style files */
+
+/* Import xterm.js styles globally */
+@import '@xterm/xterm/css/xterm.css';
+
+/* Self-hosted Josefin Sans */
+@font-face {
+  font-family: 'Josefin Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url('/assets/fonts/josefin-sans-400.woff2') format('woff2');
+}
+
+@font-face {
+  font-family: 'Josefin Sans';
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url('/assets/fonts/josefin-sans-700.woff2') format('woff2');
+}
+
+/* Theme CSS variables */
+:root {
+  color-scheme: light;
+  --bg-primary: #f4f7fb;
+  --bg-secondary: #0f162e;
+  --bg-card: #ffffff;
+  --bg-card-tint: rgba(255, 255, 255, 0.72);
+  --text-primary: #0f172a;
+  --text-secondary: #4b5563;
+  --muted: #6b7280;
+  --border-color: #d9e1ee;
+  --shadow-soft: 0 12px 40px rgba(15, 23, 42, 0.08);
+  --shadow-strong: 0 26px 60px rgba(15, 23, 42, 0.14);
+  --accent: #0ea5e9;
+  --accent-strong: #0284c7;
+  --accent-glow: rgba(14, 165, 233, 0.14);
+  --accent-gradient: linear-gradient(120deg, #0ea5e9, #22c55e);
+  --surface-blur: rgba(255, 255, 255, 0.78);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg-primary: #0b1020;
+  --bg-secondary: #0c142b;
+  --bg-card: rgba(15, 23, 42, 0.78);
+  --bg-card-tint: rgba(15, 23, 42, 0.9);
+  --text-primary: #e2e8f0;
+  --text-secondary: #94a3b8;
+  --muted: #7d89a7;
+  --border-color: #1f2c46;
+  --shadow-soft: 0 12px 40px rgba(0, 0, 0, 0.45);
+  --shadow-strong: 0 26px 60px rgba(0, 0, 0, 0.55);
+  --accent: #22d3ee;
+  --accent-strong: #0ea5e9;
+  --accent-glow: rgba(34, 211, 238, 0.16);
+  --accent-gradient: linear-gradient(120deg, #22d3ee, #a3e635);
+  --surface-blur: rgba(12, 18, 39, 0.75);
+}
+
+html,
+body {
+  font-family: 'Josefin Sans', system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  transition: background-color 0.25s ease, color 0.25s ease, background-image 0.35s ease;
+}
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  background-image:
+    radial-gradient(circle at 20% 20%, rgba(34, 197, 94, 0.08), transparent 24%),
+    radial-gradient(circle at 80% 0%, var(--accent-glow), transparent 28%),
+    linear-gradient(180deg, rgba(14, 165, 233, 0.04), transparent 32%),
+    linear-gradient(180deg, rgba(15, 23, 42, 0.04), transparent 55%);
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--accent-strong);
+  color: #f8fafc;
+}

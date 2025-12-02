@@ -1,0 +1,190 @@
+<div class="container">
+  <div class="header">
+    <h1>{{ isEdit ? 'Edit Profile' : 'Create Profile' }}</h1>
+    <button class="btn btn-secondary" (click)="onCancel()">Cancel</button>
+  </div>
+
+  <div class="content">
+    @if (loading) {
+      <div class="loading">
+        Loading profile...
+      </div>
+    }
+
+    @if (!loading) {
+      <div class="form-container">
+        <form (ngSubmit)="onSubmit()">
+          <div class="form-group">
+            <label for="name">Profile Name *</label>
+            <input
+              type="text"
+              id="name"
+              name="name"
+              [(ngModel)]="formData.name"
+              required
+              placeholder="Enter profile name"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="enabled">Status</label>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="enabled"
+                name="enabled"
+                [(ngModel)]="formData.enabled"
+              />
+              <label for="enabled" class="checkbox-label">Enable this profile</label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Withings Features</label>
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="enableBloodPressure"
+                name="enableBloodPressure"
+                [(ngModel)]="formData.enableBloodPressure"
+              />
+              <label for="enableBloodPressure" class="checkbox-label">
+                Enable Blood Pressure sync
+                <span class="help-text">Sync blood pressure measurements from Withings</span>
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="scheduleEnabled"
+                name="scheduleEnabled"
+                [(ngModel)]="scheduleEnabled"
+                (change)="onScheduleToggle()"
+              />
+              <label for="scheduleEnabled" class="checkbox-label">Enable scheduled sync</label>
+            </div>
+          </div>
+
+          @if (scheduleEnabled) {
+            <div class="form-group">
+              <label for="scheduleCron">Schedule (Cron Expression)</label>
+              <input
+                type="text"
+                id="scheduleCron"
+                name="scheduleCron"
+                [(ngModel)]="formData.scheduleCron"
+                placeholder="0 6 * * * (daily at 6 AM)"
+              />
+              <small class="help-text">
+                <strong>Cron format:</strong> minute hour day month weekday<br>
+                <strong>Examples:</strong><br>
+                • <code>0 6 * * *</code> - Daily at 6:00 AM<br>
+                • <code>*/15 * * * *</code> - Every 15 minutes<br>
+                • <code>? */3 * * *</code> - Every 3 hours at a random minute<br>
+                • <code>? ? * * 1</code> - Every Monday at random hour and minute<br>
+                • <code>0 0 1 * *</code> - Monthly on 1st at midnight<br>
+                • <strong>Use "?"</strong> for random values (helps avoid putting all load at the same minute to servers ;))<br>
+                • Leave empty for manual runs only
+              </small>
+            </div>
+          }
+
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="garminEnabled"
+                name="garminEnabled"
+                [(ngModel)]="garminEnabled"
+                (change)="onGarminToggle($event)"
+              />
+              <label for="garminEnabled" class="checkbox-label">
+                Enable Garmin sync
+                @if (profile?.garminAccountId) {
+                  <span class="connected-icon" title="Garmin is connected">✓</span>
+                }
+              </label>
+            </div>
+          </div>
+
+          @if (garminEnabled) {
+            <app-credential-input
+              label="Garmin Credentials"
+              [username]="formData.garminUsername"
+              [password]="formData.garminPassword"
+              usernamePlaceholder="Garmin username"
+              passwordPlaceholder="Garmin password"
+              helpText="Enter your Garmin Connect username and password for automatic sync."
+              (usernameChange)="formData.garminUsername = $event"
+              (passwordChange)="formData.garminPassword = $event"
+            />
+          }
+
+          <div class="form-group">
+            <div class="checkbox-group">
+              <input
+                type="checkbox"
+                id="trainerroadEnabled"
+                name="trainerroadEnabled"
+                [(ngModel)]="trainerroadEnabled"
+                (change)="onTrainerroadToggle($event)"
+              />
+              <label for="trainerroadEnabled" class="checkbox-label">
+                Enable TrainerRoad sync
+                @if (profile?.trainerroadAccountId) {
+                  <span class="connected-icon" title="TrainerRoad is connected">✓</span>
+                }
+              </label>
+            </div>
+          </div>
+
+          @if (trainerroadEnabled) {
+            <app-credential-input
+              label="TrainerRoad Credentials"
+              [username]="formData.trainerroadUsername"
+              [password]="formData.trainerroadPassword"
+              usernamePlaceholder="TrainerRoad username"
+              passwordPlaceholder="TrainerRoad password"
+              helpText="Enter your TrainerRoad username and password for automatic sync."
+              (usernameChange)="formData.trainerroadUsername = $event"
+              (passwordChange)="formData.trainerroadPassword = $event"
+            />
+          }
+
+          @if (error) {
+            <div class="error">
+              {{ error }}
+            </div>
+          }
+
+          @if (isEdit) {
+            <div class="form-actions">
+              <button type="button" class="btn btn-danger" (click)="onResetSessions()" [disabled]="saving">
+                Reset All Session Files
+              </button>
+            </div>
+            <small class="help-text warning">
+              This will delete all stored authentication data. You will need to re-authenticate with all services and may need to enter MFA codes again.
+            </small>
+          } @else {
+            <div class="debug-info" style="background: #f0f0f0; padding: 10px; margin: 10px 0; font-size: 12px;">
+              Debug: isEdit = {{ isEdit }}, profileId = {{ route.snapshot.paramMap.get('id') }}
+            </div>
+          }
+
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary" [disabled]="saving">
+              {{ saving ? 'Saving...' : (isEdit ? 'Update Profile' : 'Create Profile') }}
+            </button>
+            <button type="button" class="btn btn-secondary" (click)="onCancel()" [disabled]="saving">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </div>
+    }
+  </div>
+</div>

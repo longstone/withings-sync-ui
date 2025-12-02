@@ -1,0 +1,210 @@
+<!doctype html>
+<html lang="en">
+   <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <title>Withings Authorization Token</title>
+      <style>
+         body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+         }
+         .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 10px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            text-align: center;
+            max-width: 600px;
+            width: 90%;
+         }
+         h1 {
+            color: #333;
+            margin-bottom: 1.5rem;
+            font-size: 1.8rem;
+         }
+         .input-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+         }
+         input[type="text"] {
+            padding: 0.75rem;
+            border: 2px solid #e1e5e9;
+            border-radius: 5px;
+            font-size: 1rem;
+            font-family: 'Courier New', monospace;
+            background: #f8f9fa;
+            flex: 1;
+            max-width: 400px;
+         }
+         button {
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: background 0.3s;
+         }
+         button:hover {
+            background: #5a6fd8;
+         }
+         button:active {
+            transform: translateY(1px);
+         }
+         .message {
+            color: #666;
+            margin-top: 1rem;
+            font-size: 0.9rem;
+         }
+         .success {
+            color: #28a745;
+            font-weight: bold;
+            margin-top: 0.5rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+         }
+         .error {
+            color: #dc3545;
+            margin-top: 1rem;
+            padding: 0.5rem;
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 5px;
+            display: none;
+         }
+      </style>
+   </head>
+   <body>
+      <div class="container">
+         <h1>Withings Authorization Token</h1>
+         <div class="input-group">
+            <input type="text" value="Loading..." id="authCode" readonly>
+            <button onclick="copyToClipboard()">Copy</button>
+         </div>
+         <p class="message">Copy this authorization code and paste it back to the withings-sync script.</p>
+         <p class="success" id="successMessage">Code copied to clipboard!</p>
+         <div class="error" id="errorMessage"></div>
+      </div>
+
+      <script>
+         function getUrlVars() {
+            const params = new URLSearchParams(window.location.search);
+            const vars = {};
+            for (const [key, value] of params) {
+                vars[key] = value;
+            }
+            return vars;
+         }
+
+         function copyToClipboard() {
+            var copyText = document.getElementById('authCode');
+
+            // Try modern clipboard API first
+            if (navigator.clipboard && window.isSecureContext) {
+                navigator.clipboard.writeText(copyText.value).then(function() {
+                    showSuccess();
+                }).catch(function(err) {
+                    fallbackCopyTextToClipboard(copyText.value);
+                });
+            } else {
+                fallbackCopyTextToClipboard(copyText.value);
+            }
+         }
+
+         function fallbackCopyTextToClipboard(text) {
+            // Try clipboard API without secure context check as fallback
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(text).then(function() {
+                    showSuccess();
+                }).catch(function(err) {
+                    manualCopyFallback(text);
+                });
+            } else {
+                manualCopyFallback(text);
+            }
+         }
+
+         function manualCopyFallback(text) {
+            var textArea = document.createElement('textarea');
+            textArea.value = text;
+            textArea.style.position = 'fixed';
+            textArea.style.left = '-999999px';
+            textArea.style.top = '-999999px';
+            document.body.appendChild(textArea);
+            textArea.focus();
+            textArea.select();
+
+            try {
+                // Try to use the modern clipboard API with user gesture
+                if (navigator.clipboard && window.isSecureContext) {
+                    navigator.clipboard.writeText(text).then(function() {
+                        showSuccess();
+                        document.body.removeChild(textArea);
+                    }).catch(function(err) {
+                        // Final fallback - show text for manual copy
+                        document.body.removeChild(textArea);
+                        promptForManualCopy(text);
+                    });
+                } else {
+                    // As a last resort, try execCommand (may not work in modern browsers)
+                    document.execCommand('copy');
+                    showSuccess();
+                    document.body.removeChild(textArea);
+                }
+            } catch (err) {
+                document.body.removeChild(textArea);
+                promptForManualCopy(text);
+            }
+         }
+
+         function promptForManualCopy(text) {
+            // Show the text in a more accessible way for manual copying
+            var input = document.getElementById('authCode');
+            input.value = text;
+            input.select();
+            input.focus();
+            showError('Please copy the code manually from the input field above.');
+         }
+
+         function showSuccess() {
+            var successMsg = document.getElementById('successMessage');
+            successMsg.classList.add('show');
+            setTimeout(function() {
+                successMsg.classList.remove('show');
+            }, 3000);
+         }
+
+         function showError(message) {
+            var errorDiv = document.getElementById('errorMessage');
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+            setTimeout(function() {
+                errorDiv.style.display = 'none';
+            }, 5000);
+         }
+
+         // Initialize the page
+         document.addEventListener('DOMContentLoaded', function() {
+            var code = getUrlVars()['code'];
+            var authInput = document.getElementById('authCode');
+
+            if (code) {
+               authInput.value = code;
+            } else {
+               authInput.value = 'No authorization code found';
+               showError('No authorization code found in URL. Please restart the authentication process.');
+            }
+         });
+      </script>
+   </body>
+</html>

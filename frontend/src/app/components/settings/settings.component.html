@@ -1,0 +1,182 @@
+<div class="settings-container">
+  <div class="settings-header">
+    <h1>Settings</h1>
+    <p class="subtitle">Configure system settings and UI preferences</p>
+  </div>
+
+  @if (loading) {
+    <div class="loading-overlay">
+      <div class="spinner"></div>
+      <p>Loading settings...</p>
+    </div>
+  }
+
+  @if (error) {
+    <div class="alert alert-error">
+      <span class="alert-icon">⚠️</span>
+      <span>{{ error }}</span>
+    </div>
+  }
+
+  @if (success) {
+    <div class="alert alert-success">
+      <span class="alert-icon">✓</span>
+      <span>{{ success }}</span>
+    </div>
+  }
+
+  <form [formGroup]="settingsForm" class="settings-form" (ngSubmit)="saveSettings()">
+    <!-- System Settings Section -->
+    <section class="settings-section">
+      <h2>System Settings</h2>
+      
+      <div class="form-group">
+        <label for="logLevel" class="form-label">Log Level</label>
+        <select id="logLevel" formControlName="logLevel" class="form-control">
+          <option value="debug">Debug</option>
+          <option value="info">Info</option>
+          <option value="warn">Warning</option>
+          <option value="error">Error</option>
+        </select>
+        <small class="form-hint">Controls the verbosity of backend logs</small>
+      </div>
+
+      <h3>Withings API Configuration</h3>
+      <p class="section-description">
+        Configure the Withings application for your profiles. Use the guide below to register your app and set up the configuration files.
+      </p>
+      
+      <div class="info-box">
+        <p>
+          <strong>📋 Instructions:</strong> For step-by-step guidance on registering your own Withings application, 
+          <button (click)="openWithingsInstructions()" class="link-button">view the registration guide</button>.
+        </p>
+      </div>
+
+      <div class="form-group">
+        <label class="form-label checkbox-label">
+          <input type="checkbox" formControlName="withingsCustomApp">
+          <span class="checkmark"></span>
+          Enable Withings Custom App
+        </label>
+        <small class="form-hint">When enabled and credentials are provided, withings_app.json will be created in profile directories</small>
+      </div>
+
+      <div class="form-group">
+        <label for="withingsCallbackUrl" class="form-label">Callback URL</label>
+        <input 
+          id="withingsCallbackUrl"
+          type="url" 
+          formControlName="withingsCallbackUrl" 
+          class="form-control"
+          placeholder="https://your-app.com/callback"
+        />
+        <small class="form-hint">OAuth callback URL for Withings authentication</small>
+      </div>
+
+      <div class="form-group">
+        <label for="withingsClientId" class="form-label">Client ID</label>
+        <input 
+          id="withingsClientId"
+          type="text" 
+          formControlName="withingsClientId" 
+          class="form-control"
+          placeholder="Enter Withings Client ID"
+        />
+      </div>
+
+      <div class="form-group">
+        <label for="withingsConsumerSecret" class="form-label">Consumer Secret</label>
+        <input 
+          id="withingsConsumerSecret"
+          type="password" 
+          formControlName="withingsConsumerSecret" 
+          class="form-control"
+          placeholder="Enter Withings Consumer Secret"
+        />
+      </div>
+
+      @if (withingsClientId?.value || withingsConsumerSecret?.value) {
+        <div class="form-actions">
+          <button 
+            type="button" 
+            class="btn btn-danger" 
+            (click)="removeWithingsConfig()"
+            [disabled]="saving"
+          >
+            <span class="btn-icon">🗑️</span>
+            Remove Withings Configuration
+          </button>
+        </div>
+      }
+    </section>
+
+    <!-- UI Preferences Section -->
+    <section class="settings-section">
+      <h2>UI Preferences</h2>
+      
+      <div class="form-group">
+        <label for="apiTimeout" class="form-label">API Timeout (seconds)</label>
+        <input 
+          id="apiTimeout"
+          type="number" 
+          formControlName="apiTimeout" 
+          class="form-control"
+          min="5"
+          max="300"
+        />
+        @if (apiTimeout?.invalid && (apiTimeout?.touched || apiTimeout?.dirty)) {
+          <small class="form-error">Must be between 5 and 300 seconds</small>
+        }
+      </div>
+
+      <div class="form-group">
+        <label for="timeFormat" class="form-label">Time Format</label>
+        <select id="timeFormat" formControlName="timeFormat" class="form-control">
+          <option value="12h">12-hour (AM/PM)</option>
+          <option value="24h">24-hour</option>
+        </select>
+      </div>
+
+      <div class="form-group">
+        <label for="dateFormat" class="form-label">Date Format</label>
+        <select id="dateFormat" formControlName="dateFormat" class="form-control">
+          <option value="DD/MM/YYYY">DD/MM/YYYY</option>
+          <option value="MM/DD/YYYY">MM/DD/YYYY</option>
+          <option value="YYYY-MM-DD">YYYY-MM-DD</option>
+          <option value="DD.MM.YYYY">DD.MM.YYYY</option>
+        </select>
+      </div>
+    </section>
+
+    <!-- Form Actions -->
+    <div class="form-actions">
+      <button 
+        type="submit" 
+        class="btn btn-primary" 
+        [disabled]="saving || settingsForm.invalid"
+      >
+        @if (saving) {
+          <span class="spinner-small"></span>
+          Saving...
+        } @else {
+          <span class="btn-icon">💾</span>
+          Save Settings
+        }
+      </button>
+      
+      <button 
+        type="button" 
+        class="btn btn-secondary" 
+        (click)="resetUiPreferences()"
+        [disabled]="saving"
+      >
+        <span class="btn-icon">↺</span>
+        Reset UI Preferences
+      </button>
+    </div>
+  </form>
+  
+  <!-- Withings Instructions Modal -->
+  <app-withings-instructions-modal></app-withings-instructions-modal>
+</div>

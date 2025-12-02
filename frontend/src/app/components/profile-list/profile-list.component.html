@@ -1,0 +1,105 @@
+<div class="container">
+  <div class="header">
+    <h1>Sync Profiles</h1>
+    <button class="btn btn-primary" (click)="onCreateProfile()">
+      <i class="icon-plus"></i>
+      Create Profile
+    </button>
+  </div>
+  <div class="content">
+    @if (loading) {
+      <div class="loading">
+        Loading profiles...
+      </div>
+    }
+
+    @if (error) {
+      <div class="error">
+        {{ error }}
+      </div>
+    }
+
+    @if (!loading && !error) {
+      <div class="profile-grid">
+        @if (profiles.length === 0) {
+          <div class="empty-state">
+            <p>No profiles found. Create your first profile to get started.</p>
+            <button class="btn btn-primary" (click)="onCreateProfile()">
+              Create First Profile
+            </button>
+          </div>
+        }
+
+        @for (profile of profiles; track profile.id) {
+          <div class="profile-card" [class.disabled]="!profile.enabled">
+            <div class="profile-header">
+              <h3>{{ profile.name }}</h3>
+              <div class="profile-status">
+                <span class="status-badge" [class.active]="profile.enabled" [class.inactive]="!profile.enabled">
+                  {{ profile.enabled ? 'Active' : 'Inactive' }}
+                </span>
+              </div>
+            </div>
+
+          <div class="profile-details">
+            <div class="detail-item">
+              <span class="label">Schedule:</span>
+              <span class="value">
+                @if (profile.scheduleCron) {
+                  <div class="schedule-info">
+                    <div class="original-cron">{{ profile.originalCron || profile.scheduleCron }}</div>
+                    @if (profile.resolvedCron && profile.resolvedCron !== profile.originalCron) {
+                      <div class="resolved-cron">→ {{ profile.resolvedCron }}</div>
+                    }
+                    @if (profile.nextRunTime) {
+                      <div class="next-run">Next: {{ profile.nextRunTime | customDate }}</div>
+                    }
+                  </div>
+                } @else {
+                  Not set
+                }
+              </span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Garmin:</span>
+              <span class="value">{{ profile.garminAccountId ? 'Connected' : 'Not connected' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">TrainerRoad:</span>
+              <span class="value">{{ profile.trainerroadAccountId ? 'Connected' : 'Not connected' }}</span>
+            </div>
+            <div class="detail-item">
+              <span class="label">Last sync:</span>
+              <span class="value">
+                {{
+                  profile.runs && profile.runs.length > 0
+                    ? (profile.runs[0].startedAt | customDate)
+                    : 'Never'
+                }}
+              </span>
+            </div>
+          </div>
+
+          <div class="profile-actions">
+            <button class="btn btn-secondary" (click)="onViewDetails(profile)">
+              Edit Profile
+            </button>
+            <button class="btn btn-secondary" (click)="onRun(profile)">
+              Run
+            </button>
+            <button class="btn btn-secondary" (click)="onViewRuns(profile)">
+              View Runs
+            </button>
+            <button class="btn btn-outline" (click)="onToggleProfile(profile)">
+              {{ profile.enabled ? 'Disable' : 'Enable' }}
+            </button>
+            <button class="btn btn-danger" (click)="onDeleteProfile(profile)">
+              Delete
+            </button>
+          </div>
+        </div>
+        }
+      </div>
+    }
+  </div>
+</div>

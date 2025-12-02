@@ -1,0 +1,91 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/db/prisma-client-generated"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+// Enums are not supported by SQLite, using String fields instead
+// See backend/src/types/enums.ts for TypeScript enum definitions
+
+model User {
+  id              String           @id @default(uuid())
+  displayName     String
+  createdAt       DateTime         @default(now())
+  profiles        SyncProfile[]
+  serviceAccounts ServiceAccount[]
+}
+
+model ServiceAccount {
+  id                String @id @default(uuid())
+  type              String // "garmin" | "trainerroad"
+  username          String
+  passwordEncrypted String
+  ownerUserId       String
+  ownerUser         User   @relation(fields: [ownerUserId], references: [id])
+
+  // Back-relations from SyncProfile
+  garminProfiles      SyncProfile[] @relation("GarminAccount")
+  trainerroadProfiles SyncProfile[] @relation("TrainerRoadAccount")
+}
+
+model SyncProfile {
+  id                String @id @default(uuid())
+  name              String
+  ownerUserId       String
+  ownerUser         User   @relation(fields: [ownerUserId], references: [id])
+  withingsConfigDir String // path to folder containing .withings_user.json
+
+  garminAccountId String?
+  garminAccount   ServiceAccount? @relation("GarminAccount", fields: [garminAccountId], references: [id])
+
+  trainerroadAccountId String?
+  trainerroadAccount   ServiceAccount? @relation("TrainerRoadAccount", fields: [trainerroadAccountId], references: [id])
+
+  enabled      Boolean @default(true)
+  enableBloodPressure Boolean @default(false)
+  scheduleCron String? // cron string
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  runs SyncRun[]
+}
+
+model SyncRun {
+  id            String      @id @default(uuid())
+  syncProfileId String
+  syncProfile   SyncProfile @relation(fields: [syncProfileId], references: [id])
+
+  mode       String // "MANUAL" | "CRON"
+  status     String // "PENDING" | "RUNNING" | "SUCCESS" | "FAILED"
+  startedAt  DateTime  @default(now())
+  finishedAt DateTime?
+
+  exitCode     Int?
+  logFilePath  String?
+  errorMessage String?
+}
+
+model Settings {
+  id                      String @id @default("global")
+  
+  // System settings
+  logLevel                String @default("info")
+  withingsCallbackUrl     String?
+  withingsClientId        String?
+  withingsConsumerSecret  String?
+  withingsCustomApp      Boolean @default(false)
+  
+  // UI preferences (for multi-device sync)
+  apiTimeout              Int @default(30)
+  timeFormat              String @default("24h")
+  dateFormat              String @default("DD/MM/YYYY")
+  
+  updatedAt               DateTime @updatedAt
+}

@@ -1,0 +1,288 @@
+// Import xterm styles
+@import '@xterm/xterm/css/xterm.css';
+
+// Override xterm styles at component root level
+:host ::ng-deep .xterm {
+  height: 100% !important;
+  width: 100% !important;
+  background-color: #000 !important;
+}
+
+:host ::ng-deep .xterm-viewport {
+  background-color: #000 !important;
+}
+
+:host ::ng-deep .xterm-screen {
+  background-color: #000 !important;
+}
+
+:host ::ng-deep .xterm-rows {
+  color: #ffffff !important;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+
+  h1 {
+    margin: 0;
+    color: #333;
+  }
+}
+
+.status-indicators {
+  display: flex;
+  gap: 10px;
+}
+
+.status-badge {
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-size: 12px;
+  font-weight: 600;
+
+  &.connected {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  &.connecting {
+    background-color: #fff3cd;
+    color: #856404;
+  }
+
+  &.disconnected {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  &.running {
+    background-color: #cce5ff;
+    color: #004085;
+  }
+
+  &.stopped {
+    background-color: #e2e3e5;
+    color: #383d41;
+  }
+
+  &.success {
+    background-color: #d4edda;
+    color: #155724;
+  }
+
+  &.failed {
+    background-color: #f8d7da;
+    color: #721c24;
+  }
+
+  &.pending {
+    background-color: #e2e3e5;
+    color: #383d41;
+  }
+}
+
+.auth-urls-banner {
+  background-color: #e3f2fd;
+  border: 1px solid #2196f3;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 20px;
+
+  .auth-urls-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+
+    h3 {
+      margin: 0;
+      color: #1565c0;
+    }
+  }
+
+  .auth-urls-list {
+    margin-bottom: 15px;
+  }
+
+  .auth-url-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px;
+    background-color: white;
+    border-radius: 4px;
+    margin-bottom: 8px;
+    border: 1px solid #bbdefb;
+
+    .url-text {
+      font-family: monospace;
+      font-size: 14px;
+      color: #1565c0;
+      word-break: break-all;
+      flex: 1;
+      margin-right: 10px;
+    }
+
+    .url-actions {
+      display: flex;
+      gap: 8px;
+      flex-shrink: 0;
+    }
+  }
+
+  .auth-instructions {
+    margin: 0;
+    color: #1565c0;
+    font-size: 14px;
+    font-style: italic;
+  }
+}
+
+.error-banner {
+  background-color: #f8d7da;
+  border: 1px solid #f5c6cb;
+  color: #721c24;
+  padding: 15px;
+  border-radius: 4px;
+  margin-bottom: 20px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.success-banner {
+  background-color: #d4edda;
+  border: 1px solid #c3e6cb;
+  color: #155724;
+  padding: 15px;
+  border-radius: 4px;
+  margin-top: 20px;
+
+  strong {
+    display: block;
+    margin-bottom: 5px;
+  }
+
+  p {
+    margin: 0;
+  }
+}
+
+.terminal-controls {
+  margin-bottom: 20px;
+
+  .control-group {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+  }
+}
+
+.terminal-container {
+  height: 500px;
+  background-color: #1e1e1e;
+  border-radius: 8px;
+  padding: 10px;
+  border: 1px solid #444;
+  overflow: hidden;
+
+  .terminal {
+    height: 480px;
+    width: 100%;
+    background-color: #000;
+    border-radius: 4px;
+  }
+}
+
+.status-summary {
+  margin-top: 20px;
+  padding: 15px;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #dee2e6;
+
+  .status-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+
+    strong {
+      color: #495057;
+    }
+  }
+}
+
+.btn {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  text-decoration: none;
+  display: inline-block;
+  text-align: center;
+  transition: background-color 0.2s ease;
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  &.btn-primary {
+    background-color: #007bff;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #0056b3;
+    }
+  }
+
+  &.btn-secondary {
+    background-color: #6c757d;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #545b62;
+    }
+  }
+
+  &.btn-outline {
+    background-color: transparent;
+    border: 1px solid #6c757d;
+    color: #6c757d;
+
+    &:hover:not(:disabled) {
+      background-color: #6c757d;
+      color: white;
+    }
+  }
+
+  &.btn-danger {
+    background-color: #dc3545;
+    color: white;
+
+    &:hover:not(:disabled) {
+      background-color: #c82333;
+    }
+  }
+
+  &.btn-sm {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+}
+
+// Import xterm styles
+@import '@xterm/xterm/css/xterm.css';

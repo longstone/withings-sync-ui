@@ -1,0 +1,121 @@
+<div class="container">
+  <div class="header">
+    <h1>Run History</h1>
+    @if (profile) {
+      <div class="profile-info">
+        <span>Profile: {{ profile.name }}</span>
+      </div>
+    }
+  </div>
+
+  <div class="content">
+    @if (loading) {
+      <div class="loading">
+        Loading run history...
+      </div>
+    }
+
+    @if (error) {
+      <div class="error">
+        {{ error }}
+      </div>
+    }
+
+    @if (!loading && !error) {
+      <div class="history-container">
+        <div class="runs-list">
+          <h3>Runs ({{ runs.length }})</h3>
+          
+          @if (runs.length === 0) {
+            <div class="empty-state">
+              <p>No runs found for this profile.</p>
+            </div>
+          }
+
+          <div class="runs-table">
+            <div class="table-header">
+              <div>Started</div>
+              <div>Mode</div>
+              <div>Status</div>
+              <div>Duration</div>
+              <div>Exit Code</div>
+            </div>
+            
+            @for (run of runs; track run.id) {
+              <div 
+                class="table-row" 
+                [class.selected]="selectedRun?.id === run.id"
+                (click)="onRunClick(run)"
+              >
+                <div>{{ run.startedAt | customDate }}</div>
+                <div>
+                  <span class="mode-badge" [class]="getModeClass(run.mode)">
+                    {{ run.mode }}
+                  </span>
+                </div>
+                <div>
+                  <span class="status-badge" [class]="getStatusClass(run.status)">
+                    {{ run.status }}
+                  </span>
+                </div>
+                <div>{{ formatDuration(run) }}</div>
+                <div>{{ run.exitCode || 'N/A' }}</div>
+              </div>
+            }
+          </div>
+        </div>
+
+        @if (selectedRun) {
+          <div class="log-viewer">
+            <div class="log-header">
+              <h3>Run Log - {{ selectedRun.startedAt | customDate }}</h3>
+              <div class="log-controls">
+                <div class="log-info">
+                  <span class="mode-badge" [class]="getModeClass(selectedRun.mode)">
+                    {{ selectedRun.mode }}
+                  </span>
+                  <span class="status-badge" [class]="getStatusClass(selectedRun.status)">
+                    {{ selectedRun.status }}
+                  </span>
+                </div>
+                @if (!logLoading && logContent) {
+                  <button class="copy-button" (click)="copyLogToClipboard()" title="Copy log to clipboard">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                      <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+                    </svg>
+                    Copy
+                  </button>
+                }
+              </div>
+            </div>
+
+            @if (logLoading) {
+              <div class="log-loading">
+                Loading log content...
+              </div>
+            }
+
+            @if (!logLoading) {
+              <div class="log-content">
+                <pre>{{ logContent || 'No log content available' }}</pre>
+              </div>
+            }
+
+            @if (selectedRun.errorMessage) {
+              <div class="error-message">
+                <strong>Error:</strong> {{ selectedRun.errorMessage }}
+              </div>
+            }
+          </div>
+        }
+
+        @if (!selectedRun && runs.length > 0) {
+          <div class="no-selection">
+            <p>Select a run from the list to view its log.</p>
+          </div>
+        }
+      </div>
+    }
+  </div>
+</div>

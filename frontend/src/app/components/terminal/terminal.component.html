@@ -1,0 +1,88 @@
+<div class="container">
+  <div class="header">
+    <h1>Interactive Terminal</h1>
+  </div>
+
+  <!-- Authentication URLs Banner -->
+  @if (authUrls.length > 0) {
+    <div class="auth-urls-banner">
+      <div class="auth-urls-header">
+        <h3>🔗 Authentication Required</h3>
+        <button class="btn btn-sm btn-secondary" (click)="clearTerminal()">Clear All</button>
+      </div>
+      <div class="auth-urls-list">
+        @for (url of authUrls; track url) {
+          <div class="auth-url-item">
+            <span class="url-text">{{ url }}</span>
+            <div class="url-actions">
+              <button class="btn btn-sm btn-primary" (click)="copyAuthUrl(url)" title="Copy URL">
+                📋 Copy
+              </button>
+              <button class="btn btn-sm btn-outline" (click)="dismissAuthUrl(url)" title="Dismiss">
+                ✕ Dismiss
+              </button>
+            </div>
+          </div>
+        }
+      </div>
+      <p class="auth-instructions">
+        Click the authentication URL above or copy it to your browser. After logging in, enter the authentication code in the terminal below.
+      </p>
+    </div>
+  }
+
+  <!-- Error Display -->
+  @if (error) {
+    <div class="error-banner">
+      <strong>⚠️ Error:</strong> {{ error }}
+      <button class="btn btn-sm btn-outline" (click)="error = null">Dismiss</button>
+    </div>
+  }
+
+  <!-- Terminal Controls -->
+  <div class="terminal-controls">
+    <div class="control-group">
+      <div class="profile-selector">
+        <label for="profileSelect">Select Profile:</label>
+        <select id="profileSelect" [(ngModel)]="profileId" (change)="selectProfile(profileId)" [disabled]="isProfileLocked">
+          <option value="">Choose a profile...</option>
+          @for (profile of availableProfiles; track profile.id) {
+            <option [value]="profile.id">{{ profile.name }}{{ !profile.enabled ? ' (disabled)' : '' }}</option>
+          }
+        </select>
+      </div>
+      <button class="btn btn-primary" (click)="startInteractiveRun()" [disabled]="isConnecting || isConnected || !profileId">
+        Start Interactive Run (always Debug)
+      </button>
+            <button class="btn btn-outline" (click)="disconnect()" [disabled]="!isConnected">
+        Disconnect
+      </button>
+      <button class="btn btn-outline" (click)="clearTerminal()" [disabled]="isConnected">
+        Clear Terminal
+      </button>
+      @if (isRunning && sessionId) {
+        <button class="btn btn-danger" (click)="cancelRun()" [disabled]="!isRunning">
+          Cancel Run
+        </button>
+      }
+    </div>
+  </div>
+
+  <!-- Terminal Container -->
+  <div class="terminal-container">
+    <div #terminalContainer class="terminal"></div>
+  </div>
+
+
+  <!-- Run Status Summary -->
+  @if (runStatus) {
+    <div class="status-summary">
+      <div class="status-item">
+        <strong>Final Status:</strong>
+        <span class="status-badge" [class]="runStatus.toLowerCase()">
+          {{ runStatus }}
+        </span>
+      </div>
+    </div>
+  }
+</div>
