@@ -11,7 +11,7 @@
   margin-bottom: 30px;
 
   .profile-info {
-    color: #666;
+     color: var(--text-secondary);
     font-weight: 500;
   }
 }
@@ -23,7 +23,7 @@
 .loading {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .error {
@@ -42,25 +42,25 @@
 }
 
 .runs-list {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-soft);
   overflow-y: auto;
 
   h3 {
     margin: 0 0 15px 0;
-    color: #333;
+    color: var(--text-primary);
   }
 }
 
 .log-viewer {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   min-height: 0;
@@ -72,7 +72,7 @@
 .empty-state {
   text-align: center;
   padding: 40px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .runs-table {
@@ -81,11 +81,11 @@
     grid-template-columns: 1fr 80px 100px 80px 80px;
     gap: 10px;
     padding: 10px;
-    background-color: #f8f9fa;
+    background-color: var(--bg-card-tint);
     border-radius: 4px;
     font-weight: 600;
     font-size: 12px;
-    color: #666;
+    color: var(--text-secondary);
     margin-bottom: 10px;
   }
 
@@ -97,15 +97,16 @@
     border-radius: 4px;
     cursor: pointer;
     font-size: 14px;
+    color: var(--text-primary);
     transition: background-color 0.2s ease;
 
     &:hover {
-      background-color: #f8f9fa;
+      background-color: var(--bg-card-tint);
     }
 
     &.selected {
-      background-color: #e3f2fd;
-      border: 1px solid #2196f3;
+      background-color: var(--accent-glow);
+      border: 1px solid var(--accent);
     }
   }
 }
@@ -155,11 +156,11 @@
 }
 
 .log-viewer {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 20px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-soft);
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -176,7 +177,7 @@
 
   h3 {
     margin: 0;
-    color: #333;
+    color: var(--text-primary);
   }
 
   .log-controls {
@@ -196,22 +197,22 @@
   align-items: center;
   gap: 6px;
   padding: 6px 12px;
-  background-color: #f8f9fa;
-  border: 1px solid #dee2e6;
+  background-color: var(--bg-card-tint);
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  color: #495057;
+  color: var(--text-primary);
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s ease;
 
   &:hover {
-    background-color: #e9ecef;
-    border-color: #adb5bd;
-    color: #212529;
+    background-color: var(--bg-secondary);
+    border-color: var(--accent);
+    color: var(--accent);
   }
 
   &:active {
-    background-color: #dee2e6;
+    background-color: var(--bg-secondary);
     transform: translateY(1px);
   }
 
@@ -223,35 +224,35 @@
 .log-loading {
   text-align: center;
   padding: 20px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 .log-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
-  border: 1px solid #eee;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
-  background-color: #f8f9fa;
+  background-color: var(--bg-primary);
   scrollbar-width: thin;
-  scrollbar-color: #666 #ddd;
+  scrollbar-color: var(--text-secondary) var(--bg-card-tint);
 
   &::-webkit-scrollbar {
     width: 12px;
   }
 
   &::-webkit-scrollbar-track {
-    background: #f1f1f1;
+    background: var(--bg-card-tint);
   }
 
   &::-webkit-scrollbar-thumb {
-    background-color: #666;
+    background-color: var(--text-secondary);
     border-radius: 6px;
-    border: 2px solid #f1f1f1;
+    border: 2px solid var(--bg-card-tint);
   }
 
   &::-webkit-scrollbar-thumb:hover {
-    background-color: #888;
+    background-color: var(--text-primary);
   }
 
   pre {
@@ -262,6 +263,7 @@
     line-height: 1.4;
     white-space: pre-wrap;
     word-wrap: break-word;
+    color: var(--text-primary);
   }
 }
 
@@ -276,13 +278,13 @@
 }
 
 .no-selection {
-  background: white;
-  border: 1px solid #ddd;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
   border-radius: 8px;
   padding: 40px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: var(--shadow-soft);
   text-align: center;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 @media (max-width: 1200px) {
