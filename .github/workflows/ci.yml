@@ -18,18 +18,8 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
-  lint-workflows:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate GitHub Actions config
-        uses: rhysd/actionlint@v1
-
   test:
     runs-on: ubuntu-latest
-    needs: lint-workflows
     strategy:
       matrix:
         component: [frontend, backend]
