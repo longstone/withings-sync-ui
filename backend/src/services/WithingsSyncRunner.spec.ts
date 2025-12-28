@@ -379,7 +379,7 @@ describe('WithingsSyncRunner', () => {
         })
 
         it('should build CLI arguments with all options', async () => {
-            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, false, 'info')
+            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, 'info')
 
             expect(args).toContain('--config-folder')
             expect(args).toContain('/config/dir')
@@ -396,13 +396,13 @@ describe('WithingsSyncRunner', () => {
         })
 
         it('should add verbose flag for debug log level', async () => {
-            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, false, 'debug')
+            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, 'debug')
 
             expect(args).toContain('--verbose')
         })
 
         it('should add silent flag for warn/error log level', async () => {
-            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, false, 'warn')
+            const args = await withingsSyncRunner['buildCliArgs'](mockProfile, 'warn')
 
             expect(args).toContain('--silent')
         })
@@ -410,7 +410,7 @@ describe('WithingsSyncRunner', () => {
         it('should handle missing service accounts', async () => {
             const profileNoAccounts = { ...mockProfile, garminAccountId: null, trainerroadAccountId: null }
             
-            const args = await withingsSyncRunner['buildCliArgs'](profileNoAccounts, false, 'info')
+            const args = await withingsSyncRunner['buildCliArgs'](profileNoAccounts, 'info')
 
             expect(args).not.toContain('--garmin-username')
             expect(args).not.toContain('--trainerroad-username')

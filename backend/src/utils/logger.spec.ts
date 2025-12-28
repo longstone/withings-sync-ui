@@ -20,10 +20,7 @@ describe('Logger', () => {
 
     beforeEach(() => {
         jest.clearAllMocks()
-        mockFs.existsSync.mockImplementation((path: string) => {
-            if (path === testLogDir) return false
-            return true
-        })
+        mockFs.existsSync.mockImplementation((path: string) => path !== testLogDir)
         mockFs.mkdirSync.mockImplementation(() => {
         })
         mockFs.appendFileSync.mockImplementation(() => {
@@ -40,7 +37,7 @@ describe('Logger', () => {
 
         it('should use custom log directory when provided', () => {
             mockFs.existsSync.mockReturnValue(false)
-            new Logger()
+            new Logger(testLogDir)
             expect(mockFs.existsSync).toHaveBeenCalledWith(testLogDir)
             expect(mockFs.mkdirSync).toHaveBeenCalledWith(testLogDir, {recursive: true})
         })
