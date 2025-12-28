@@ -19,10 +19,10 @@ import { FormsModule } from '@angular/forms'
         <div class="callback-url-box">
           <label for="callbackUrl">Use this URL when registering your Withings app:</label>
           <div class="url-display">
-            <input 
-              type="text" 
-              id="callbackUrl" 
-              [value]="callbackUrl()" 
+            <input
+              type="text"
+              id="callbackUrl"
+              [value]="callbackUrl()"
               readonly
               class="url-input"
             />
@@ -42,13 +42,13 @@ import { FormsModule } from '@angular/forms'
         <ol class="steps-list">
           <li>
             <strong>Create a Withings Account</strong>
-            <p>If you don't have one, sign up at 
+            <p>If you don't have one, sign up at
               <a href="https://account.withings.com/connectionuser/account_create" target="_blank" rel="noopener">
                 https://account.withings.com/connectionuser/account_create
               </a>
             </p>
           </li>
-          
+
           <li>
             <strong>Register a Developer Application</strong>
             <p>Go to the Withings Developer Portal and create a new OAuth2 application:
@@ -57,10 +57,10 @@ import { FormsModule } from '@angular/forms'
               </a>
             </p>
             <p class="warning">
-              Note: You'll need to provide an app icon (any square image will work).
+              Note: You can provide an app icon (any square image will work).
             </p>
           </li>
-          
+
           <li>
             <strong>Configure Your Application</strong>
             <ul>
@@ -69,7 +69,7 @@ import { FormsModule } from '@angular/forms'
               <li>Upload an app icon (required)</li>
             </ul>
           </li>
-          
+
           <li>
             <strong>Get Your Credentials</strong>
             <p>After registration, you'll receive:
@@ -83,21 +83,7 @@ import { FormsModule } from '@angular/forms'
       <!-- Next Steps -->
       <div class="next-steps">
         <h3>3. Configure withings-sync</h3>
-        <div class="config-box">
-          <p>Once you have your Client ID and Consumer Secret, you need to create a <code>withings_app.json</code> file in your profile directory:</p>
-          
-          <pre class="code-block"><code>{{ getConfigTemplate() }}</code></pre>
-          
-          <p class="instruction">
-            Replace <strong>YOUR_CLIENT_ID_HERE</strong> and <strong>YOUR_CONSUMER_SECRET_HERE</strong> 
-            with the actual values from your Withings developer app.
-          </p>
-          
-          <p class="location-note">
-            <strong>File Location:</strong> The <code>withings_app.json</code> file should be placed in:
-            <br><code>/data/withings-config/[your-profile-id]/withings_app.json</code>
-          </p>
-        </div>
+        <p>Once you have your Client ID and Consumer Secret configured, you can start an interactive run</p>
       </div>
 
       <!-- Success Message -->
@@ -141,7 +127,7 @@ export class WithingsInstructionsComponent {
       document.body.appendChild(textArea)
       textArea.focus()
       textArea.select()
-      
+
       try {
         document.execCommand('copy')
         this.copied.set(true)
@@ -149,7 +135,7 @@ export class WithingsInstructionsComponent {
       } catch (err) {
         console.error('Failed to copy URL:', err)
       }
-      
+
       document.body.removeChild(textArea)
     })
   }

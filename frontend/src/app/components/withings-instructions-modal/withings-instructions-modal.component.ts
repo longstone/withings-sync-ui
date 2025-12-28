@@ -73,7 +73,7 @@ import {signal} from '@angular/core'
                     </a>
                   </p>
                   <p class="warning">
-                    Note: You'll need to provide an app icon (any square image will work).
+                    Note: You can provide an app icon (any square image will work).
                   </p>
                 </li>
 
@@ -99,22 +99,7 @@ import {signal} from '@angular/core'
             <!-- Next Steps -->
             <div class="next-steps">
               <h3>3. Configure withings-sync</h3>
-              <div class="config-box">
-                <p>Once you have your Client ID and Consumer Secret, you need to create a <code>withings_app.json</code>
-                  file in your profile directory:</p>
-
-                <pre class="code-block"><code>{{ getConfigTemplate() }}</code></pre>
-
-                <p class="instruction">
-                  Replace <strong>YOUR_CLIENT_ID_HERE</strong> and <strong>YOUR_CONSUMER_SECRET_HERE</strong>
-                  with the actual values from your Withings developer app.
-                </p>
-
-                <p class="location-note">
-                  <strong>File Location:</strong> The <code>withings_app.json</code> file should be placed in:
-                  <br><code>/data/withings-config/[your-profile-id]/withings_app.json</code>
-                </p>
-              </div>
+              <p>Once you have your Client ID and Consumer Secret configured, you can start an interactive run</p>
             </div>
           </div>
         </div>
@@ -144,15 +129,7 @@ export class WithingsInstructionsModalComponent {
     document.body.style.overflow = ''
   }
 
-  getConfigTemplate(): string {
-    return `{
-  "callback_url": "${this.callbackUrl()}",
-  "client_id": "YOUR_CLIENT_ID_HERE",
-  "consumer_secret": "YOUR_CONSUMER_SECRET_HERE"
-}`
-  }
-
-  copyCallbackUrl(): void {
+    copyCallbackUrl(): void {
     navigator.clipboard.writeText(this.callbackUrl()).then(() => {
       this.copied.set(true)
       setTimeout(() => this.copied.set(false), 2000)
