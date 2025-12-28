@@ -19,6 +19,15 @@ COPY backend/prisma.config.ts backend/
 RUN cd backend && npm ci && npm run prisma:generate && npm run backend:build
 
 ############################
+# Backend prod deps
+############################
+FROM node-base AS backend-deps
+WORKDIR /app
+COPY backend/package*.json backend/
+COPY backend/prisma.config.ts backend/
+RUN cd backend && npm ci --omit=dev
+
+############################
 # Frontend build
 ############################
 FROM node-base AS frontend-build
@@ -61,9 +70,7 @@ ENV NODE_ENV=production \
 WORKDIR /app
 
 # Backend deps (Prisma CLI for migrate deploy)
-COPY backend/package*.json backend/
-COPY backend/prisma.config.ts backend/
-RUN cd backend && npm ci --omit=dev
+COPY --from=backend-deps /app/backend/node_modules /app/backend/node_modules
 
 # Copy built backend + prisma artifacts
 COPY --from=backend-build /app/backend/dist /app/backend/dist
