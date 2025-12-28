@@ -56,8 +56,8 @@ export class LogDirectoryService {
 
     readRunLogs(profileId: string, runId: string): string[] {
         try {
-            const profileDir = this.provideProfileDirectory(profileId);
-            const logFile = join(profileDir, `${runId}.log`);
+            // Log files are stored directly in the logs directory, not in profile subdirectories
+            const logFile = join(this.logDir, `${runId}.log`);
 
             if (!existsSync(logFile)) {
                 return [];
