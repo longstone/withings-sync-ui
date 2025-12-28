@@ -1,7 +1,6 @@
-import { ConfigDirectoryService } from './ConfigDirectoryService'
-import { existsSync, mkdirSync, readdirSync } from 'fs'
-import { join } from 'path'
-import { Dirent } from 'node:fs'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {join} from 'path'
+import {Dirent} from 'node:fs'
 
 // Mock fs module
 jest.mock('fs', () => {

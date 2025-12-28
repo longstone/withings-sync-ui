@@ -1,8 +1,8 @@
-import { SettingsService, Settings, UpdateSettingsData } from './SettingsService'
-import { CryptoService } from './CryptoService'
-import { WithingsAppConfigService } from './WithingsAppConfigService'
-import { logger } from '../utils/logger'
-import { PrismaClient } from '../db/prisma-client-generated/client'
+import {SettingsService, Settings, UpdateSettingsData} from '@/services/SettingsService'
+import {CryptoService} from '@/services/CryptoService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {logger} from '@/utils/logger'
+import {PrismaClient} from '@/db/prisma-client-generated/client'
 
 // Mock all dependencies
 jest.mock('../utils/logger')
@@ -25,7 +25,7 @@ describe('SettingsService', () => {
 
     beforeEach(() => {
         jest.clearAllMocks()
-        
+
         // Create mocked dependencies
         mockPrisma = new PrismaClient({} as any) as any
         mockWithingsAppConfigService = {
@@ -37,7 +37,7 @@ describe('SettingsService', () => {
             encrypt: jest.fn(),
             decrypt: jest.fn()
         } as any
-        
+
         // Create service with mocked dependencies
         settingsService = new SettingsService(
             mockPrisma,
@@ -62,11 +62,11 @@ describe('SettingsService', () => {
 
         it('should return existing settings', async () => {
             (mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(mockSettings)
-            
+
             const result = await settingsService.getSettings()
-            
+
             expect(mockPrisma.settings.findUnique).toHaveBeenCalledWith({
-                where: { id: 'global' }
+                where: {id: 'global'}
             })
             expect(result).toEqual({
                 logLevel: 'info',
@@ -84,9 +84,9 @@ describe('SettingsService', () => {
         it('should create default settings if none exist', async () => {
             (mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(null)
             ;(mockPrisma.settings.create as jest.Mock).mockResolvedValue(mockSettings)
-            
+
             const result = await settingsService.getSettings()
-            
+
             expect(mockPrisma.settings.create).toHaveBeenCalledWith({
                 data: {
                     id: 'global',
@@ -102,15 +102,15 @@ describe('SettingsService', () => {
 
         it('should handle undefined optional fields', async () => {
             const settingsWithNulls = {
-                ...mockSettings,
-                withingsCallbackUrl: null,
-                withingsClientId: null,
-                withingsConsumerSecret: null
-            }
+                    ...mockSettings,
+                    withingsCallbackUrl: null,
+                    withingsClientId: null,
+                    withingsConsumerSecret: null
+                }
             ;(mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(settingsWithNulls)
-            
+
             const result = await settingsService.getSettings()
-            
+
             expect(result.withingsCallbackUrl).toBeUndefined()
             expect(result.withingsClientId).toBeUndefined()
             expect(result.withingsConsumerSecret).toBeUndefined()
@@ -137,8 +137,8 @@ describe('SettingsService', () => {
         }
 
         beforeEach(() => {
-            ;jest.spyOn(settingsService, 'getSettings').mockResolvedValue(existingSettings)
-            ;(mockPrisma.settings.upsert as jest.Mock).mockResolvedValue(updatedSettings)
+            jest.spyOn(settingsService, 'getSettings').mockResolvedValue(existingSettings);
+            (mockPrisma.settings.upsert as jest.Mock).mockResolvedValue(updatedSettings)
         })
 
         it('should update settings successfully', async () => {
@@ -146,11 +146,11 @@ describe('SettingsService', () => {
                 logLevel: 'debug',
                 apiTimeout: 60
             }
-            
+
             const result = await settingsService.updateSettings(updateData)
-            
+
             expect(mockPrisma.settings.upsert).toHaveBeenCalledWith({
-                where: { id: 'global' },
+                where: {id: 'global'},
                 update: updateData,
                 create: {
                     id: 'global',
@@ -168,16 +168,16 @@ describe('SettingsService', () => {
                 withingsCustomApp: true,
                 withingsCallbackUrl: 'http://new-callback.com'
             }
-            
+
             mockCryptoService.encrypt.mockReturnValue('encrypted-new-secret')
             ;(mockPrisma.settings.upsert as jest.Mock).mockResolvedValue({
                 ...updatedSettings,
                 withingsClientId: 'new-client',
                 withingsConsumerSecret: 'encrypted-new-secret'
             })
-            
+
             await settingsService.updateSettings(updateData)
-            
+
             expect(mockWithingsAppConfigService.updateWithingsAppConfig).toHaveBeenCalledWith(
                 'new-client',
                 'new-secret',
@@ -190,9 +190,9 @@ describe('SettingsService', () => {
             const updateData: UpdateSettingsData = {
                 withingsCustomApp: false
             }
-            
+
             await settingsService.updateSettings(updateData)
-            
+
             expect(mockWithingsAppConfigService.deleteWithingsAppConfig).toHaveBeenCalled()
         })
 
@@ -204,12 +204,12 @@ describe('SettingsService', () => {
                 withingsConsumerSecret: undefined,
                 withingsCustomApp: true
             })
-            
+
             const updateData: UpdateSettingsData = {
                 withingsClientId: 'client-only',
                 withingsCustomApp: true
             }
-            
+
             await expect(settingsService.updateSettings(updateData)).rejects.toThrow(
                 'Both client ID and consumer secret must be provided or removed together'
             )
@@ -223,12 +223,12 @@ describe('SettingsService', () => {
                 withingsConsumerSecret: undefined,
                 withingsCustomApp: true
             })
-            
+
             const updateData: UpdateSettingsData = {
                 withingsClientId: undefined,
                 withingsConsumerSecret: 'secret-only'
             }
-            
+
             await expect(settingsService.updateSettings(updateData)).rejects.toThrow(
                 'Both client ID and consumer secret must be provided or removed together'
             )
@@ -238,9 +238,9 @@ describe('SettingsService', () => {
             const updateData: UpdateSettingsData = {
                 logLevel: 'debug'
             }
-            
+
             await settingsService.updateSettings(updateData)
-            
+
             expect(mockWithingsAppConfigService.updateWithingsAppConfig).not.toHaveBeenCalled()
             expect(mockWithingsAppConfigService.deleteWithingsAppConfig).not.toHaveBeenCalled()
         })
@@ -254,9 +254,9 @@ describe('SettingsService', () => {
             }
             mockCryptoService.decrypt.mockReturnValue('decrypted-secret')
             ;(mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(mockSettings)
-            
+
             const result = await settingsService.getDecryptedWithingsConfig()
-            
+
             expect(result).toEqual({
                 clientId: 'client123',
                 consumerSecret: 'decrypted-secret'
@@ -266,21 +266,21 @@ describe('SettingsService', () => {
 
         it('should return null when credentials are missing', async () => {
             const mockSettings = {
-                withingsClientId: null,
-                withingsConsumerSecret: null
-            }
+                    withingsClientId: null,
+                    withingsConsumerSecret: null
+                }
             ;(mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(mockSettings)
-            
+
             const result = await settingsService.getDecryptedWithingsConfig()
-            
+
             expect(result).toBeNull()
         })
 
         it('should return null when settings do not exist', async () => {
             (mockPrisma.settings.findUnique as jest.Mock).mockResolvedValue(null)
-            
+
             const result = await settingsService.getDecryptedWithingsConfig()
-            
+
             expect(result).toBeNull()
         })
     })
@@ -292,9 +292,9 @@ describe('SettingsService', () => {
                 client_id: 'client123',
                 consumer_secret: 'secret123'
             }
-            
+
             await settingsService.saveWithingsAppConfig(config)
-            
+
             expect(mockWithingsAppConfigService.updateWithingsAppConfig).toHaveBeenCalledWith(
                 config.client_id,
                 config.consumer_secret,
@@ -306,7 +306,7 @@ describe('SettingsService', () => {
     describe('removeWithingsConfig', () => {
         it('should remove Withings config', async () => {
             await settingsService.removeWithingsConfig()
-            
+
             expect(mockWithingsAppConfigService.deleteWithingsAppConfig).toHaveBeenCalled()
         })
     })
@@ -315,12 +315,12 @@ describe('SettingsService', () => {
         it('should update log level', async () => {
             const logLevel = 'debug'
             ;(mockPrisma.settings.update as jest.Mock).mockResolvedValue({})
-            
+
             await settingsService.updateLogLevel(logLevel)
-            
+
             expect(mockPrisma.settings.update).toHaveBeenCalledWith({
-                where: { id: 'global' },
-                data: { logLevel }
+                where: {id: 'global'},
+                data: {logLevel}
             })
             expect(logger.info).toHaveBeenCalledWith(`Log level updated to ${logLevel}`, undefined, undefined)
         })

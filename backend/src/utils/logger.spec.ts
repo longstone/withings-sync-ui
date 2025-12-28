@@ -1,4 +1,4 @@
-import {Logger, logger, RunLogger} from './logger'
+import {Logger, logger, RunLogger} from '@/utils/logger'
 
 // Mock fs module
 jest.mock('fs', () => {
@@ -33,14 +33,14 @@ describe('Logger', () => {
     describe('constructor', () => {
         it('should use default log directory when none provided', () => {
             mockFs.existsSync.mockReturnValue(false)
-            const logger = new Logger()
+            new Logger()
             expect(mockFs.existsSync).toHaveBeenCalled()
             expect(mockFs.mkdirSync).toHaveBeenCalled()
         })
 
         it('should use custom log directory when provided', () => {
             mockFs.existsSync.mockReturnValue(false)
-            const logger = new Logger(testLogDir)
+            new Logger()
             expect(mockFs.existsSync).toHaveBeenCalledWith(testLogDir)
             expect(mockFs.mkdirSync).toHaveBeenCalledWith(testLogDir, {recursive: true})
         })

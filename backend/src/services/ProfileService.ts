@@ -1,10 +1,10 @@
-import prisma from '../db/prisma'
-import {logger} from '../utils/logger'
-import {CryptoService} from '../services/CryptoService'
+import prisma from '@/db/prisma'
+import {logger} from '@/utils/logger'
+import {CryptoService} from '@/services/CryptoService'
 import {existsSync, unlinkSync, rmSync} from 'fs'
-import {WithingsAppConfigService} from './WithingsAppConfigService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {randomUUID} from 'crypto'
-import {ConfigDirectoryService} from "./ConfigDirectoryService";
+import {ConfigDirectoryService} from "@/services/ConfigDirectoryService";
 
 
 

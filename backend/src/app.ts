@@ -3,13 +3,13 @@ import cors from '@fastify/cors'
 import websocket from '@fastify/websocket'
 import {createReadStream, existsSync, statSync} from 'fs'
 import path from 'path'
-import profilesRoutes from './routes/profiles'
-import runsRoutes from './routes/runs'
-import schedulerRoutes from './routes/scheduler'
-import settingsRoutes from './routes/settings'
-import {registerWebSocketHandler} from './ws/WebSocketHandler'
-import {Services} from './services/Services'
-import {initializeLoggerWithFastify} from './utils/logger'
+import profilesRoutes from '@/routes/profiles'
+import runsRoutes from '@/routes/runs'
+import schedulerRoutes from '@/routes/scheduler'
+import settingsRoutes from '@/routes/settings'
+import {registerWebSocketHandler} from '@/ws/WebSocketHandler'
+import {Services} from '@/services/Services'
+import {initializeLoggerWithFastify} from '@/utils/logger'
 
 // Format log message - handle objects and strings
 const formatMessage = (msg: any, ...args: any[]): string => {
@@ -104,12 +104,12 @@ server.register(schedulerRoutes, {prefix: '/api'})
 server.register(settingsRoutes, {prefix: '/api'})
 
 // Health check
-server.get('/health', async (request, reply) => {
+server.get('/health', async () => {
     return {status: 'ok', timestamp: new Date().toISOString()}
 })
 
 // CLI health check
-server.get('/health/cli', async (request, reply) => {
+server.get('/health/cli', async () => {
     try {
         const isAvailable = await services.getWithingsSyncRunner().checkCliAvailability()
         const version = isAvailable ? await services.getWithingsSyncRunner().getCliVersion() : null

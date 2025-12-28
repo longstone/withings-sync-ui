@@ -1,11 +1,9 @@
-import { SchedulerService, SchedulerStatus } from './SchedulerService'
-import { ProfileService } from './ProfileService'
-import { RunService } from './RunService'
-import { WithingsSyncRunner } from './WithingsSyncRunner'
-import { logger } from '../utils/logger'
-import { RunMode, RunStatus } from '../types/enums'
-import * as schedule from 'node-schedule'
-import { randomWeeklyCronOnDay, randomMinute, randomHour } from '../utils/random'
+import {SchedulerService} from '@/services/SchedulerService'
+import {ProfileService} from '@/services/ProfileService'
+import {RunService} from '@/services/RunService'
+import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
+import {logger} from '@/utils/logger'
+import {RunMode, RunStatus} from '@/types/enums'
 
 // Mock all dependencies
 jest.mock('node-schedule', () => ({

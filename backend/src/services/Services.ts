@@ -1,12 +1,12 @@
-import prisma from '../db/prisma'
-import {ConfigDirectoryService} from './ConfigDirectoryService'
-import {WithingsAppConfigService} from './WithingsAppConfigService'
-import {SettingsService} from './SettingsService'
-import {createProfileService} from './ProfileService'
-import {RunService} from './RunService'
-import {SchedulerService} from './SchedulerService'
-import {WithingsSyncRunner} from './WithingsSyncRunner'
-import {CryptoService} from './CryptoService'
+import prisma from '@/db/prisma'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {SettingsService} from '@/services/SettingsService'
+import {createProfileService} from '@/services/ProfileService'
+import {RunService} from '@/services/RunService'
+import {SchedulerService} from '@/services/SchedulerService'
+import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
+import {CryptoService} from '@/services/CryptoService'
 
 export class Services {
     private configDirectoryService!: ConfigDirectoryService

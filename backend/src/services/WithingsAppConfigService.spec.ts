@@ -1,10 +1,9 @@
-import { WithingsAppConfigService, WithingsAppConfig } from './WithingsAppConfigService'
-import { CryptoService } from './CryptoService'
-import { ConfigDirectoryService } from './ConfigDirectoryService'
-import { logger } from '../utils/logger'
-import { existsSync, unlinkSync, writeFileSync } from 'fs'
-import { join } from 'path'
-import { PrismaClient, Settings } from '../db/prisma-client-generated/client'
+import {WithingsAppConfig, WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {CryptoService} from '@/services/CryptoService'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {writeFileSync} from 'fs'
+import {join} from 'path'
+import {PrismaClient, Settings} from '@/db/prisma-client-generated/client'
 
 // Mock all dependencies
 jest.mock('../utils/logger')

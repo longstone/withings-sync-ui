@@ -1,5 +1,5 @@
 import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
-import { SettingsService, UpdateSettingsData } from '../services/SettingsService'
+import { SettingsService, UpdateSettingsData } from '@/services/SettingsService'
 
 export default async function settingsRoutes(fastify: FastifyInstance) {
   const settingsService = fastify.services.getSettingsService() as SettingsService

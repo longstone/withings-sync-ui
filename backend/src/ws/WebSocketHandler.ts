@@ -1,8 +1,8 @@
 import { FastifyInstance, FastifyRequest } from 'fastify'
 import { WebSocket } from '@fastify/websocket'
 import { randomUUID } from 'crypto'
-import { RunMode, RunStatus } from '../types/enums'
-import { logger } from '../utils/logger'
+import { RunMode, RunStatus } from '@/types/enums'
+import { logger } from '@/utils/logger'
 
 export interface WebSocketMessage {
   type: 'stdout' | 'stderr' | 'stdin' | 'status' | 'error' | 'close' | 'auth_url'

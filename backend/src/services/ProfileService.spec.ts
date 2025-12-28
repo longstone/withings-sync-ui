@@ -1,10 +1,8 @@
-import { ProfileService, CreateProfileData, UpdateProfileData } from './ProfileService'
-import { CryptoService } from './CryptoService'
-import { WithingsAppConfigService } from './WithingsAppConfigService'
-import { ConfigDirectoryService } from './ConfigDirectoryService'
-import { logger } from '../utils/logger'
-import { existsSync, unlinkSync, rmSync } from 'fs'
-import { randomUUID } from 'crypto'
+import {CreateProfileData, ProfileService, UpdateProfileData} from '@/services/ProfileService'
+import {CryptoService} from '@/services/CryptoService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {logger} from '@/utils/logger'
 
 // Mock all dependencies
 jest.mock('../db/prisma', () => ({
@@ -57,7 +55,6 @@ jest.mock('crypto', () => ({
 const mockPrisma = jest.requireMock('../db/prisma').default
 const mockFs = jest.mocked(jest.requireMock('fs'))
 const mockCrypto = jest.requireMock('crypto')
-const mockPath = jest.requireMock('path')
 
 describe('ProfileService', () => {
     let profileService: ProfileService

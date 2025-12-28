@@ -1,10 +1,10 @@
 import * as schedule from 'node-schedule'
-import { RunMode } from '../types/enums'
-import { ProfileService } from './ProfileService'
-import { RunService } from './RunService'
-import { WithingsSyncRunner } from './WithingsSyncRunner'
-import { logger } from '../utils/logger'
-import { randomWeeklyCronOnDay, randomMinute, randomHour } from '../utils/random'
+import { RunMode } from '@/types/enums'
+import { ProfileService } from '@/services/ProfileService'
+import { RunService } from '@/services/RunService'
+import { WithingsSyncRunner } from '@/services/WithingsSyncRunner'
+import { logger } from '@/utils/logger'
+import { randomWeeklyCronOnDay, randomMinute, randomHour } from '@/utils/random'
 
 export interface SchedulerStatus {
   running: boolean

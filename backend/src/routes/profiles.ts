@@ -1,5 +1,5 @@
 import {FastifyInstance} from 'fastify'
-import {RunMode} from '../types/enums'
+import {RunMode} from '@/types/enums'
 
 export default async function profilesRoutes(fastify: FastifyInstance) {
     const profileService = fastify.services.getProfileService();

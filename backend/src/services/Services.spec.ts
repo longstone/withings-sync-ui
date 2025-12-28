@@ -39,16 +39,15 @@ jest.mock('./CryptoService', () => ({
     CryptoService: MockCryptoService
 }))
 
-import { Services } from './Services'
-import { ConfigDirectoryService } from './ConfigDirectoryService'
-import { WithingsAppConfigService } from './WithingsAppConfigService'
-import { SettingsService } from './SettingsService'
-import { createProfileService } from './ProfileService'
-import { RunService } from './RunService'
-import { SchedulerService } from './SchedulerService'
-import { WithingsSyncRunner } from './WithingsSyncRunner'
-import { CryptoService } from './CryptoService'
-import prisma from '../db/prisma'
+import {Services} from '@/services/Services'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {SettingsService} from '@/services/SettingsService'
+import {RunService} from '@/services/RunService'
+import {SchedulerService} from '@/services/SchedulerService'
+import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
+import {CryptoService} from '@/services/CryptoService'
+import prisma from '@/db/prisma'
 
 describe('Services', () => {
     let services: Services

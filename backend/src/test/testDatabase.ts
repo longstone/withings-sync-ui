@@ -1,7 +1,7 @@
 import {execSync} from 'child_process'
 import {existsSync, unlinkSync} from 'fs'
 import {join} from 'path'
-import {PrismaClient} from "../db/prisma-client-generated/client";
+import {PrismaClient} from "@/db/prisma-client-generated/client";
 import {PrismaBetterSqlite3} from "@prisma/adapter-better-sqlite3";
 
 export class TestDatabase {

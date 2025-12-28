@@ -1,11 +1,10 @@
-import { WithingsSyncRunner, RunOptions, RunResult, OutputCallback } from './WithingsSyncRunner'
-import { RunService } from './RunService'
-import { ProfileService } from './ProfileService'
-import { WithingsAppConfigService } from './WithingsAppConfigService'
-import { CryptoService } from './CryptoService'
-import { logger, RunLogger } from '../utils/logger'
-import { spawn, ChildProcess } from 'child_process'
-import prisma from '../db/prisma'
+import {OutputCallback, RunOptions, WithingsSyncRunner} from '@/services/WithingsSyncRunner'
+import {RunService} from '@/services/RunService'
+import {ProfileService} from '@/services/ProfileService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {CryptoService} from '@/services/CryptoService'
+import {logger, RunLogger} from '@/utils/logger'
+import {ChildProcess, spawn} from 'child_process'
 
 // Mock all dependencies
 jest.mock('../utils/logger')
@@ -164,6 +163,7 @@ describe('WithingsSyncRunner', () => {
             const options: RunOptions = { interactive: false }
             const result = await withingsSyncRunner.runSync(profileId, runId, options)
 
+            expect(executeCliSpy).toHaveBeenCalled()
             expect(mockRunService.failRun).toHaveBeenCalledWith(runId, 'Sync failed', 1)
             expect(result.success).toBe(false)
             expect(result.errorMessage).toBe('Sync failed')
@@ -256,7 +256,7 @@ describe('WithingsSyncRunner', () => {
 
         it('should handle process close event', async () => {
             jest.spyOn(withingsSyncRunner as any, 'spawnInteractiveProcess')
-                .mockImplementation((args, env, logger, callback) => {
+                .mockImplementation((_args, _env, _logger, _callback) => {
                     // Simulate process close
                     setTimeout(() => {
                         const closeCallback = mockChildProcess.on.mock.calls.find((call: any) => call[0] === 'close')?.[1] as any

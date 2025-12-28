@@ -1,17 +1,110 @@
-import { CryptoService } from '../services/CryptoService'
-import { ConfigDirectoryService } from '../services/ConfigDirectoryService'
+import {CryptoService} from '@/services/CryptoService'
+import {join} from 'path'
+import * as fs from 'fs'
+
+// Mock the fs module
+jest.mock('fs')
+const mockedFs = jest.mocked(fs, { shallow: false })
+
+// Mock ConfigDirectoryService
+class MockConfigDirectoryService {
+  private configDir: string
+  private keyFileExists: boolean = false
+  private keyFileContent: string = ''
+
+  constructor() {
+    this.configDir = '/mock/config/dir'
+  }
+
+  provideConfigDirectory() {
+    // Mock implementation - does nothing
+  }
+
+  provideProfileDirectory(profileId: string): string {
+    return join(this.configDir, profileId)
+  }
+
+  getConfigDirectory() {
+    return this.configDir
+  }
+
+  isConfigDirectoryExisting() {
+    return true
+  }
+
+  // Helper methods for testing
+  setKeyFileExists(exists: boolean) {
+    this.keyFileExists = exists
+    mockedFs.existsSync.mockImplementation((path: fs.PathLike) => {
+      const pathStr = path.toString()
+      if (pathStr.includes('.sync-secret-key')) {
+        return this.keyFileExists
+      }
+      return true
+    })
+  }
+
+  setKeyFileContent(content: string) {
+    this.keyFileContent = content
+    mockedFs.readFileSync.mockImplementation((path: fs.PathOrFileDescriptor, options?: fs.EncodingOption) => {
+      const pathStr = path.toString()
+      if (pathStr.includes('.sync-secret-key')) {
+        return this.keyFileContent
+      }
+      return ''
+    })
+  }
+
+  captureWrittenKey() {
+    let writtenKey = ''
+    mockedFs.writeFileSync.mockImplementation((path: fs.PathOrFileDescriptor, data: string | ArrayBufferView) => {
+      const pathStr = path.toString()
+      if (pathStr.includes('.sync-secret-key')) {
+        writtenKey = data.toString()
+      }
+    })
+    return () => writtenKey
+  }
+}
 
 describe('CryptoService', () => {
   let cryptoService: CryptoService
-  let configDirectoryService: ConfigDirectoryService
+  let mockConfigService: MockConfigDirectoryService
+  const originalEnv = process.env
 
   beforeEach(() => {
-    // Create a new instance with a test directory
-    configDirectoryService = new ConfigDirectoryService()
-    cryptoService = new CryptoService(configDirectoryService)
+    jest.clearAllMocks()
+    process.env = { ...originalEnv }
+    delete process.env.SYNC_SECRET_KEY
+    
+    // Set up default fs mocks
+    mockedFs.existsSync.mockReturnValue(true)
+    mockedFs.mkdirSync.mockImplementation(() => undefined)
+    mockedFs.readdirSync.mockReturnValue([])
+    mockedFs.readFileSync.mockReturnValue('')
+    mockedFs.writeFileSync.mockImplementation(() => {})
+    
+    // Create mock service
+    mockConfigService = new MockConfigDirectoryService()
+    
+    // Mock console.log to avoid noise in tests
+    jest.spyOn(console, 'log').mockImplementation(() => {})
+  })
+
+  afterEach(() => {
+    process.env = originalEnv
+    jest.restoreAllMocks()
   })
 
   describe('encrypt/decrypt', () => {
+    beforeEach(() => {
+      // Set up mock to generate a new key
+      mockConfigService.setKeyFileExists(false)
+      const getWrittenKey = mockConfigService.captureWrittenKey()
+      cryptoService = new CryptoService(mockConfigService as any)
+      // Verify a key was generated
+      expect(getWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
+    })
     it('should encrypt and decrypt text correctly', () => {
       const testText = 'test-password-123'
       const encrypted = cryptoService.encrypt(testText)
@@ -51,6 +144,10 @@ describe('CryptoService', () => {
   })
 
   describe('decrypt error handling', () => {
+    beforeEach(() => {
+      mockConfigService.setKeyFileExists(false)
+      cryptoService = new CryptoService(mockConfigService as any)
+    })
     it('should throw error for invalid format', () => {
       expect(() => cryptoService.decrypt('invalid-format')).toThrow('Failed to decrypt data')
     })
@@ -66,15 +163,52 @@ describe('CryptoService', () => {
 
   describe('key management', () => {
     it('should create a key file if none exists', () => {
-      expect(cryptoService.hasKeyFile()).toBe(true)
+      mockConfigService.setKeyFileExists(false)
+      const getWrittenKey = mockConfigService.captureWrittenKey()
+      cryptoService = new CryptoService(mockConfigService as any)
+      
+      expect(getWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
+      // After creating the CryptoService, the key file should exist
+      expect(mockedFs.existsSync).toHaveBeenCalledWith(expect.stringContaining('.sync-secret-key'))
+    })
+
+    it('should use existing key file if it exists', () => {
+      const testKey = 'a'.repeat(64)
+      mockConfigService.setKeyFileExists(true)
+      mockConfigService.setKeyFileContent(testKey)
+      
+      cryptoService = new CryptoService(mockConfigService as any)
+      
+      // Should not write a new key
+      expect(mockedFs.writeFileSync).not.toHaveBeenCalled()
+    })
+
+    it('should use environment variable if set', () => {
+      process.env.SYNC_SECRET_KEY = 'b'.repeat(64)
+      
+      mockConfigService.setKeyFileExists(false)
+      const getWrittenKey = mockConfigService.captureWrittenKey()
+      cryptoService = new CryptoService(mockConfigService as any)
+      
+      // Should not write a key file when using env variable
+      expect(getWrittenKey()).toBe('')
     })
 
     it('should rotate key successfully', () => {
+      mockConfigService.setKeyFileExists(false)
+      cryptoService = new CryptoService(mockConfigService as any)
+      
       const testText = 'test-data'
       const encrypted = cryptoService.encrypt(testText)
       
+      // Capture the new key that will be written
+      const getNewWrittenKey = mockConfigService.captureWrittenKey()
+      
       // Rotate key
       cryptoService.rotateKey()
+      
+      // Verify a new key was written
+      expect(getNewWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
       
       // Old encrypted data should fail to decrypt
       expect(() => cryptoService.decrypt(encrypted)).toThrow()

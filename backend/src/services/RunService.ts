@@ -1,8 +1,7 @@
-import prisma from '../db/prisma'
-import { RunMode, RunStatus } from '../types/enums'
-import { logger, RunLogger } from '../utils/logger'
-import { existsSync, unlinkSync } from 'fs'
-import { join } from 'path'
+import prisma from '@/db/prisma'
+import {RunMode, RunStatus} from '@/types/enums'
+import {logger, RunLogger} from '@/utils/logger'
+import {existsSync, unlinkSync} from 'fs'
 
 export interface CreateRunData {
   syncProfileId: string

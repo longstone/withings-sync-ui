@@ -1,4 +1,4 @@
-import {PrismaClient} from './prisma-client-generated/client'
+import {PrismaClient} from '@/db/prisma-client-generated/client'
 import {PrismaBetterSqlite3} from '@prisma/adapter-better-sqlite3';
 
 const defaultDatabaseUrl = 'file:../data/db/app.db'

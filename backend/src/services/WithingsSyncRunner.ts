@@ -1,10 +1,10 @@
 import {ChildProcess, spawn} from 'child_process'
-import {RunService} from './RunService'
-import {ProfileService} from './ProfileService'
-import {WithingsAppConfigService} from './WithingsAppConfigService'
-import {logger, RunLogger} from '../utils/logger'
-import {CryptoService} from './CryptoService'
-import prisma from '../db/prisma'
+import {RunService} from '@/services/RunService'
+import {ProfileService} from '@/services/ProfileService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {logger, RunLogger} from '@/utils/logger'
+import {CryptoService} from '@/services/CryptoService'
+import prisma from '@/db/prisma'
 
 export interface RunOptions {
   interactive: boolean
@@ -100,7 +100,7 @@ export class WithingsSyncRunner {
       await this.runService.startRun(runId)
 
       // Prepare CLI arguments
-      const args = await this.buildCliArgs(profile, options.interactive, logLevel)
+      const args = await this.buildCliArgs(profile, logLevel)
       
       // Prepare environment variables
       const env = {
@@ -180,7 +180,7 @@ export class WithingsSyncRunner {
       await this.runService.startRun(runId)
 
       // Prepare CLI arguments
-      const args = await this.buildCliArgs(profile, true, resolvedLogLevel)
+      const args = await this.buildCliArgs(profile, resolvedLogLevel)
       
       // Prepare environment variables
       const env = {
@@ -293,7 +293,7 @@ export class WithingsSyncRunner {
   }
 
   // Build CLI arguments based on profile and mode
-  private async buildCliArgs(profile: any, interactive: boolean, logLevel: 'debug' | 'info' | 'warn' | 'error'): Promise<string[]> {
+  private async buildCliArgs(profile: any, logLevel: 'debug' | 'info' | 'warn' | 'error'): Promise<string[]> {
     const args: string[] = []
     
     // Add config folder first

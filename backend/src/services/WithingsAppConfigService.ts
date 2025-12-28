@@ -1,9 +1,9 @@
 import {existsSync, unlinkSync, writeFileSync} from 'fs'
 import {join} from 'path'
-import {CryptoService} from './CryptoService'
-import {logger} from '../utils/logger'
-import {PrismaClient, Settings} from "../db/prisma-client-generated/client";
-import {ConfigDirectoryService} from "./ConfigDirectoryService";
+import {CryptoService} from '@/services/CryptoService'
+import {logger} from '@/utils/logger'
+import {PrismaClient, Settings} from "@/db/prisma-client-generated/client";
+import {ConfigDirectoryService} from "@/services/ConfigDirectoryService";
 
 export interface WithingsAppConfig {
     client_id: string

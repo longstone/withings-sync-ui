@@ -1,8 +1,8 @@
 import {createCipheriv, createDecipheriv, randomBytes} from 'crypto'
-import {readFileSync, writeFileSync, existsSync, mkdirSync} from 'fs'
+import {existsSync, readFileSync, writeFileSync} from 'fs'
 import {join} from 'path'
-import {logger} from '../utils/logger'
-import {ConfigDirectoryService} from './ConfigDirectoryService'
+import {logger} from '@/utils/logger'
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
 
 export class CryptoService {
     private static readonly ALGORITHM = 'aes-256-cbc'

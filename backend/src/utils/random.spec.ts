@@ -6,7 +6,7 @@ import {
   randomWeeklyCron,
   randomWeeklyCronOnDay,
   randomDailyCron
-} from './random'
+} from '@/utils/random'
 
 describe('Random Utils', () => {
   describe('randomInt', () => {

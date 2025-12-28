@@ -1,8 +1,4 @@
-import {FastifyRequest, FastifyReply} from 'fastify'
-import {SettingsService} from '../services/SettingsService'
-import {WithingsAppConfigService} from '../services/WithingsAppConfigService'
-import {ProfileService} from '../services/ProfileService'
-import {Services} from '../services/Services'
+import {Services} from '@/services/Services'
 
 declare module 'fastify' {
     export interface FastifyInstance {

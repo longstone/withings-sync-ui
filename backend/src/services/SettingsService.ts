@@ -1,9 +1,7 @@
-import prisma from '../db/prisma'
-import {CryptoService} from './CryptoService'
-import { WithingsAppConfigService } from './WithingsAppConfigService'
-import { logger } from '../utils/logger'
-import {PrismaClient} from "../db/prisma-client-generated/client";
-import {ConfigDirectoryService} from "./ConfigDirectoryService";
+import {CryptoService} from '@/services/CryptoService'
+import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
+import {logger} from '@/utils/logger'
+import {PrismaClient} from "@/db/prisma-client-generated/client";
 
 export interface Settings {
   // System settings

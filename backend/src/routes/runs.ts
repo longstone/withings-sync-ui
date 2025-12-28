@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify'
-import {RunService} from "../services/RunService";
+import {RunService} from "@/services/RunService";
 
 export default async function runsRoutes(fastify: FastifyInstance) {
   const runService: RunService = fastify.services.getRunService()
