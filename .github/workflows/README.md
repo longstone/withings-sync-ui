@@ -6,10 +6,7 @@ This document explains the CI/CD pipeline setup for the withings-sync project.
 
 The pipeline consists of 6 jobs that run on push/PR to main and develop branches:
 
-### 1. Lint Workflows
-- Runs actionlint to validate GitHub Actions config (helps when running locally with `act`)
-
-### 2. Test Job
+### 1. Test Job
 - Runs in parallel for frontend and backend using matrix strategy
 - Installs dependencies with `npm ci` for faster installs
 - Runs security audit with `npm audit`
@@ -17,35 +14,18 @@ The pipeline consists of 6 jobs that run on push/PR to main and develop branches
 - Executes unit tests using proper npm scripts
 - Uploads coverage reports to Codecov (backend only)
 
-### 3. Build Job
+### 2. Build Job
 - Runs after tests pass
 - Builds both frontend and backend applications
 - Generates Prisma client and runs migrations
 - Uploads build artifacts for use in subsequent jobs
 
-### 4. Docker Job
+### 3. Docker Job
 - Builds and pushes Docker image to GitHub Container Registry
 - Runs on push and release events; pushes images for main, release/* branches, and tags
 - Uses Docker Buildx with GitHub Actions cache for faster builds
 - Tags images with branch name, PR number, and SHA
 - Pushes to registry only on main branch
-
-### 5. E2E Test Job
-- Runs end-to-end tests using Playwright
-- Tests against Docker container
-- For PRs: attempts to pull branch-specific image, falls back to local build
-- Waits for container health check before running tests
-- Uploads test reports and screenshots on failure
-
-### 6. Security Job
-- Runs Trivy vulnerability scanner on Docker image
-- Runs on main, release/* branches, and tags after successful build
-- Uploads SARIF results to GitHub Security tab
-
-### 7. Deploy Job
-- Placeholder for production deployment
-- Runs on main, release/* branches, and tags after all jobs pass
-- Requires manual approval via GitHub environments
 
 ## Required Secrets
 
