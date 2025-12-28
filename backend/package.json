@@ -4,7 +4,7 @@
   "description": "Backend for Withings Sync Orchestrator",
   "main": "dist/app.js",
   "scripts": {
-    "backend:build": "tsc",
+    "backend:build": "tsc && tsc-alias",
     "backend:start": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} DATA_DIR=$PWD/data node dist/app.js",
     "backend:dev": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} DATA_DIR=$PWD/data ts-node-dev --respawn --transpile-only src/app.ts",
     "backend:test": "jest",
@@ -30,6 +30,7 @@
     "prisma": "7.1.0",
     "ts-jest": "^29.1.1",
     "ts-node-dev": "^2.0.0",
+    "tsc-alias": "^1.8.16",
     "typescript": "^5.2.2"
   }
 }
