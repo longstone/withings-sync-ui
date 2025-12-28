@@ -6,7 +6,7 @@
   "scripts": {
     "backend:build": "tsc && tsc-alias",
     "backend:start": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} DATA_DIR=$PWD/data node dist/app.js",
-    "backend:dev": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} DATA_DIR=$PWD/data ts-node-dev --respawn --transpile-only src/app.ts",
+    "backend:dev": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} DATA_DIR=$PWD/data ts-node-dev -r tsconfig-paths/register --respawn --transpile-only src/app.ts",
     "backend:test": "jest",
     "prisma:generate": "DATABASE_URL=file:./data/db/dev.db prisma generate",
     "prisma:migrate": "DATABASE_URL=file:./data/db/dev.db prisma migrate dev",
@@ -31,6 +31,7 @@
     "ts-jest": "^29.1.1",
     "ts-node-dev": "^2.0.0",
     "tsc-alias": "^1.8.16",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5.2.2"
   }
 }

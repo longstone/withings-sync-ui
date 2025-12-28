@@ -2,7 +2,7 @@ import {SchedulerService} from '@/services/SchedulerService'
 import {ProfileService} from '@/services/ProfileService'
 import {RunService} from '@/services/RunService'
 import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {RunMode, RunStatus} from '@/types/enums'
 
 // Mock all dependencies
@@ -15,7 +15,7 @@ jest.mock('node-schedule', () => ({
     }))
 }))
 
-jest.mock('../utils/logger')
+jest.mock('../services/LoggerService')
 jest.mock('../utils/random', () => ({
     randomWeeklyCronOnDay: jest.fn().mockReturnValue('0 2 * * 0'),
     randomMinute: jest.fn().mockReturnValue(15),
@@ -29,6 +29,7 @@ describe('SchedulerService', () => {
     let mockProfileService: jest.Mocked<ProfileService>
     let mockRunService: jest.Mocked<RunService>
     let mockWithingsSyncRunner: jest.Mocked<WithingsSyncRunner>
+    let mockLogger: jest.Mocked<LoggerService>
     let setIntervalSpy: jest.SpyInstance
     let clearIntervalSpy: jest.SpyInstance
 
@@ -54,10 +55,18 @@ describe('SchedulerService', () => {
             runSync: jest.fn()
         } as any
 
+        mockLogger = {
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            debug: jest.fn()
+        } as any
+
         schedulerService = new SchedulerService(
             mockProfileService,
             mockRunService,
-            mockWithingsSyncRunner
+            mockWithingsSyncRunner,
+            mockLogger
         )
     })
 
@@ -118,7 +127,7 @@ describe('SchedulerService', () => {
             mockProfileService.getScheduledProfiles.mockRejectedValue(error)
             
             await expect(schedulerService.initialize()).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 'Failed to initialize scheduler',
                 error.message
             )
@@ -352,7 +361,7 @@ describe('SchedulerService', () => {
             
             await schedulerService.refreshSchedules()
             
-            expect(logger.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 'Failed to schedule profile profile2: Error: Schedule failed'
             )
         })
@@ -481,7 +490,7 @@ describe('SchedulerService', () => {
             await schedulerService['executeScheduledRun'](profileId)
             
             expect(mockRunService.createRun).not.toHaveBeenCalled()
-            expect(logger.warn).toHaveBeenCalledWith(
+            expect(mockLogger.warn).toHaveBeenCalledWith(
                 `Skipping scheduled run for profile ${profileId}: profile already running`
             )
         })
@@ -514,7 +523,7 @@ describe('SchedulerService', () => {
             
             await schedulerService['executeScheduledRun'](profileId)
             
-            expect(logger.error).toHaveBeenCalledWith(
+            expect(mockLogger.error).toHaveBeenCalledWith(
                 `Scheduled run failed for profile ${profileId}: Sync failed`
             )
         })

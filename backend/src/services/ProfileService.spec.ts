@@ -2,7 +2,7 @@ import {CreateProfileData, ProfileService, UpdateProfileData} from '@/services/P
 import {CryptoService} from '@/services/CryptoService'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 
 // Mock all dependencies
 jest.mock('../db/prisma', () => ({
@@ -33,7 +33,7 @@ jest.mock('../db/prisma', () => ({
     }
 }))
 
-jest.mock('../utils/logger')
+jest.mock('../services/LoggerService')
 jest.mock('fs', () => ({
     existsSync: jest.fn(),
     unlinkSync: jest.fn(),
@@ -61,6 +61,7 @@ describe('ProfileService', () => {
     let mockCryptoService: jest.Mocked<CryptoService>
     let mockWithingsAppConfigService: jest.Mocked<WithingsAppConfigService>
     let mockConfigDirectoryService: jest.Mocked<ConfigDirectoryService>
+    let mockLogger: jest.Mocked<LoggerService>
 
     beforeEach(() => {
         jest.clearAllMocks()
@@ -79,10 +80,18 @@ describe('ProfileService', () => {
             provideProfileDirectory: jest.fn()
         } as any
 
+        mockLogger = {
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            debug: jest.fn()
+        } as any
+
         profileService = new ProfileService(
             mockCryptoService,
             mockWithingsAppConfigService,
-            mockConfigDirectoryService
+            mockConfigDirectoryService,
+            mockLogger
         )
     })
 
@@ -118,7 +127,7 @@ describe('ProfileService', () => {
             mockPrisma.syncProfile.findMany.mockRejectedValue(error)
             
             await expect(profileService.getProfilesByUserId(userId)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to fetch profiles for user ${userId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to fetch profiles for user ${userId}`)
         })
     })
 
@@ -151,7 +160,7 @@ describe('ProfileService', () => {
             mockPrisma.syncProfile.findMany.mockRejectedValue(error)
             
             await expect(profileService.getAllProfiles()).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith('Failed to fetch all profiles')
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to fetch all profiles')
         })
     })
 
@@ -183,7 +192,7 @@ describe('ProfileService', () => {
             mockPrisma.syncProfile.findUnique.mockRejectedValue(error)
             
             await expect(profileService.getProfileById(profileId)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to fetch profile ${profileId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to fetch profile ${profileId}`)
         })
     })
 
@@ -273,7 +282,7 @@ describe('ProfileService', () => {
             mockPrisma.user.upsert.mockRejectedValue(error)
 
             await expect(profileService.createProfile(createData)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalled()
+            expect(mockLogger.error).toHaveBeenCalled()
         })
     })
 
@@ -338,7 +347,7 @@ describe('ProfileService', () => {
                 garminPassword: null
             })
 
-            expect(logger.info).toHaveBeenCalledWith(`Updated profile ${profileId}`)
+            expect(mockLogger.info).toHaveBeenCalledWith(`Updated profile ${profileId}`)
         })
 
         it('should handle errors during profile update', async () => {
@@ -346,7 +355,7 @@ describe('ProfileService', () => {
             mockPrisma.$transaction.mockRejectedValue(error)
 
             await expect(profileService.updateProfile(profileId, updateData)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to update profile ${profileId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to update profile ${profileId}`)
         })
     })
 
@@ -391,7 +400,7 @@ describe('ProfileService', () => {
             mockPrisma.syncProfile.findUnique.mockRejectedValue(error)
 
             await expect(profileService.deleteProfile(profileId)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to delete profile ${profileId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to delete profile ${profileId}`)
         })
     })
 
@@ -412,7 +421,7 @@ describe('ProfileService', () => {
                 }
             })
             expect(result).toEqual(mockProfile)
-            expect(logger.info).toHaveBeenCalledWith(`Disabled profile ${profileId}`)
+            expect(mockLogger.info).toHaveBeenCalledWith(`Disabled profile ${profileId}`)
         })
 
         it('should handle errors during toggle', async () => {
@@ -420,7 +429,7 @@ describe('ProfileService', () => {
             mockPrisma.syncProfile.update.mockRejectedValue(error)
 
             await expect(profileService.toggleProfile(profileId, true)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to toggle profile ${profileId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to toggle profile ${profileId}`)
         })
     })
 
@@ -527,7 +536,7 @@ describe('ProfileService', () => {
 
             await profileService.resetProfileSessions(profileId)
 
-            expect(logger.warn).toHaveBeenCalledWith(`No config directory found for profile ${profileId}`)
+            expect(mockLogger.warn).toHaveBeenCalledWith(`No config directory found for profile ${profileId}`)
         })
     })
 

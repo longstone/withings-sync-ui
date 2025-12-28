@@ -1,11 +1,11 @@
-import {SettingsService, Settings, UpdateSettingsData} from '@/services/SettingsService'
+import {Settings, SettingsService, UpdateSettingsData} from '@/services/SettingsService'
 import {CryptoService} from '@/services/CryptoService'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {PrismaClient} from '@/db/prisma-client-generated/client'
 
 // Mock all dependencies
-jest.mock('../utils/logger')
+jest.mock('../services/LoggerService')
 jest.mock('../db/prisma-client-generated/client', () => ({
     PrismaClient: jest.fn().mockImplementation(() => ({
         settings: {
@@ -22,6 +22,7 @@ describe('SettingsService', () => {
     let mockPrisma: jest.Mocked<PrismaClient>
     let mockWithingsAppConfigService: jest.Mocked<WithingsAppConfigService>
     let mockCryptoService: jest.Mocked<CryptoService>
+    let mockLogger: jest.Mocked<LoggerService>
 
     beforeEach(() => {
         jest.clearAllMocks()
@@ -37,12 +38,25 @@ describe('SettingsService', () => {
             encrypt: jest.fn(),
             decrypt: jest.fn()
         } as any
+        
+        // Create mock logger
+        mockLogger = {
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            debug: jest.fn(),
+            writeLog: jest.fn(),
+            setFastifyLogger: jest.fn(),
+            createRunLogger: jest.fn(),
+            readRunLogs: jest.fn()
+        } as any
 
         // Create service with mocked dependencies
         settingsService = new SettingsService(
             mockPrisma,
             mockWithingsAppConfigService,
-            mockCryptoService
+            mockCryptoService,
+            mockLogger
         )
     })
 
@@ -322,7 +336,7 @@ describe('SettingsService', () => {
                 where: {id: 'global'},
                 data: {logLevel}
             })
-            expect(logger.info).toHaveBeenCalledWith(`Log level updated to ${logLevel}`, undefined, undefined)
+            expect(mockLogger.info).toHaveBeenCalledWith(`Log level updated to ${logLevel}`, undefined, undefined)
         })
     })
 })

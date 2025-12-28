@@ -9,7 +9,6 @@ import schedulerRoutes from '@/routes/scheduler'
 import settingsRoutes from '@/routes/settings'
 import {registerWebSocketHandler} from '@/ws/WebSocketHandler'
 import {Services} from '@/services/Services'
-import {initializeLoggerWithFastify} from '@/utils/logger'
 
 // Format log message - handle objects and strings
 const formatMessage = (msg: any, ...args: any[]): string => {
@@ -79,16 +78,16 @@ const server = Fastify({
     logger: createPlainLogger()
 })
 
-// Log the actual DATABASE_URL being used
-console.log('DATABASE_URL being used:', process.env.DATABASE_URL)
-
 // Initialize services using manual dependency injection
 const services: Services = new Services().initialize()
+
+// Log the actual DATABASE_URL being used
+services.getLogger().info('DATABASE_URL being used: ' + (process.env.DATABASE_URL || 'undefined'))
 
 server.decorate('services', services);
 
 // Initialize the custom logger with the fastify logger instance
-initializeLoggerWithFastify(server.log)
+services.initializeLoggerWithFastify(server.log)
 
 // Register plugins
 server.register(cors)
@@ -216,6 +215,6 @@ const start = async () => {
 }
 
 start().catch(err => {
-    console.error('Failed to start application:', err)
+    services.getLogger().error('Failed to start application: ' + (err instanceof Error ? err.message : String(err)))
     process.exit(1)
 })

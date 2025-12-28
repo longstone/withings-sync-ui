@@ -1,8 +1,7 @@
-import { FastifyInstance, FastifyRequest } from 'fastify'
-import { WebSocket } from '@fastify/websocket'
-import { randomUUID } from 'crypto'
-import { RunMode, RunStatus } from '@/types/enums'
-import { logger } from '@/utils/logger'
+import {FastifyInstance, FastifyRequest} from 'fastify'
+import {WebSocket} from '@fastify/websocket'
+import {randomUUID} from 'crypto'
+import {RunMode, RunStatus} from '@/types/enums'
 
 export interface WebSocketMessage {
   type: 'stdout' | 'stderr' | 'stdin' | 'status' | 'error' | 'close' | 'auth_url'
@@ -25,6 +24,7 @@ export class WebSocketHandler {
   private runService: any
   private profileService: any
   private withingsSyncRunner: any
+  private logger: any
 
   constructor(private fastify: FastifyInstance) {
     // Get services from the Services instance
@@ -32,6 +32,7 @@ export class WebSocketHandler {
     this.runService = services.getRunService()
     this.profileService = services.getProfileService()
     this.withingsSyncRunner = services.getWithingsSyncRunner()
+    this.logger = services.getLogger()
     
     this.registerRoutes()
   }
@@ -81,7 +82,7 @@ export class WebSocketHandler {
         pingInterval
       })
 
-      logger.info(`WebSocket connected for session ${sessionId}, run ${session.runId}`)
+      this.logger.info(`WebSocket connected for session ${sessionId}, run ${session.runId}`)
 
       // Send initial status
       connection.send(JSON.stringify({
@@ -102,7 +103,7 @@ export class WebSocketHandler {
 
       // Handle connection errors
       connection.on('error', (error: Error) => {
-        logger.error(`WebSocket error for session ${sessionId}: ${error.message}`)
+        this.logger.error(`WebSocket error for session ${sessionId}: ${error.message}`)
         const activeSession = this.activeSessions.get(sessionId)
         if (activeSession?.pingInterval) {
           clearInterval(activeSession.pingInterval)
@@ -111,7 +112,7 @@ export class WebSocketHandler {
       })
 
     } catch (error) {
-      logger.error(`WebSocket connection failed for session ${sessionId}: ${error}`)
+      this.logger.error(`WebSocket connection failed for session ${sessionId}: ${error}`)
       connection.send(JSON.stringify({
         type: 'error',
         data: 'Connection setup failed',
@@ -128,19 +129,19 @@ export class WebSocketHandler {
       const run = await this.runService.getRunById(sessionId)
       
       if (!run) {
-        logger.warn(`No run found for session ${sessionId}`)
+        this.logger.warn(`No run found for session ${sessionId}`)
         return null
       }
 
       // Check if run is in appropriate state for interactive connection
       if (run.status !== RunStatus.PENDING && run.status !== RunStatus.RUNNING) {
-        logger.warn(`Run ${run.id} is in invalid state ${run.status} for interactive connection`)
+        this.logger.warn(`Run ${run.id} is in invalid state ${run.status} for interactive connection`)
         return null
       }
 
       // Check if run is interactive mode
       if (run.mode !== RunMode.MANUAL) {
-        logger.warn(`Run ${run.id} is not in manual/interactive mode`)
+        this.logger.warn(`Run ${run.id} is not in manual/interactive mode`)
         return null
       }
 
@@ -151,7 +152,7 @@ export class WebSocketHandler {
       }
 
     } catch (error) {
-      logger.error(`Session validation failed for ${sessionId}: ${error}`)
+      this.logger.error(`Session validation failed for ${sessionId}: ${error}`)
       return null
     }
   }
@@ -161,7 +162,18 @@ export class WebSocketHandler {
     try {
       const activeSession = this.activeSessions.get(session.runId)
       if (!activeSession) {
-        throw new Error('Active session not found')
+        this.logger.error(`Active session not found for runId: ${session.runId}`)
+        // Send error message to client if possible
+        const sessionConnection = this.activeSessions.get(session.runId)?.connection
+        if (sessionConnection?.readyState === 1) {
+          sessionConnection.send(JSON.stringify({
+            type: 'error',
+            data: 'Active session not found',
+            runId: session.runId,
+            timestamp: new Date().toISOString()
+          } as WebSocketMessage))
+        }
+        return
       }
 
       // Define output callback to forward CLI output to WebSocket
@@ -174,7 +186,7 @@ export class WebSocketHandler {
         }
 
         // Send to WebSocket
-        if (activeSession.connection.readyState === 1) { // WebSocket.OPEN
+        if (activeSession.connection && activeSession.connection.readyState === 1) { // WebSocket.OPEN
           activeSession.connection.send(JSON.stringify(message))
         }
       }
@@ -184,18 +196,18 @@ export class WebSocketHandler {
       if (run?.status === RunStatus.RUNNING) {
         // Resuming existing run - just send a status message
         outputCallback('status', 'Resumed existing interactive session')
-        } else {
-          // Start new interactive run with real-time output streaming
-          await this.withingsSyncRunner.startInteractiveRun(
-            session.profileId,
-            session.runId,
-            outputCallback,
-            this.runService.getRunLogLevel(session.runId) || 'info'
-          )
-        }
+      } else {
+        // Start new interactive run with real-time output streaming
+        await this.withingsSyncRunner.startInteractiveRun(
+          session.profileId,
+          session.runId,
+          outputCallback,
+          this.runService.getRunLogLevel(session.runId) || 'info'
+        )
+      }
 
-      } catch (error) {
-      logger.error(`Interactive run failed for session ${session.runId}: ${error}`)
+    } catch (error) {
+      this.logger.error(`Interactive run failed for session ${session.runId}: ${error}`)
       
       const activeSession = this.activeSessions.get(session.runId)
       if (activeSession) {
@@ -236,16 +248,16 @@ export class WebSocketHandler {
           if (parsedMessage.data) {
             // Forward input to CLI process
             this.withingsSyncRunner.sendInput(activeSession.runId, sessionId, parsedMessage.data)
-            logger.debug(`Forwarded input to run ${activeSession.runId}: ${parsedMessage.data}`)
+            this.logger.debug(`Forwarded input to run ${activeSession.runId}: ${parsedMessage.data}`)
           }
           break
 
         default:
-          logger.warn(`Unknown message type: ${parsedMessage.type}`)
+          this.logger.warn(`Unknown message type: ${parsedMessage.type}`)
       }
 
     } catch (error) {
-      logger.error(`Failed to handle client message for session ${sessionId}: ${error}`)
+      this.logger.error(`Failed to handle client message for session ${sessionId}: ${error}`)
     }
   }
 
@@ -254,7 +266,7 @@ export class WebSocketHandler {
     try {
       const activeSession = this.activeSessions.get(sessionId)
       if (activeSession) {
-        logger.info(`WebSocket disconnected for session ${sessionId}, run ${activeSession.runId}`)
+        this.logger.info(`WebSocket disconnected for session ${sessionId}, run ${activeSession.runId}`)
 
         // Clear ping interval
         if (activeSession.pingInterval) {
@@ -269,7 +281,7 @@ export class WebSocketHandler {
       }
 
     } catch (error) {
-      logger.error(`Failed to handle connection close for session ${sessionId}: ${error}`)
+      this.logger.error(`Failed to handle connection close for session ${sessionId}: ${error}`)
     }
   }
 

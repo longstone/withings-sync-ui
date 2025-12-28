@@ -47,7 +47,21 @@ import {RunService} from '@/services/RunService'
 import {SchedulerService} from '@/services/SchedulerService'
 import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
 import {CryptoService} from '@/services/CryptoService'
+import {FastifyLogger, LoggerService, RunLogger} from '@/services/LoggerService'
 import prisma from '@/db/prisma'
+
+// Mock fs module for logger testing
+jest.mock('fs', () => {
+    const actualFs = jest.requireActual('fs')
+    return {
+        ...actualFs,
+        writeFileSync: jest.fn(),
+        appendFileSync: jest.fn(),
+        existsSync: jest.fn(),
+        mkdirSync: jest.fn(),
+        readFileSync: jest.fn()
+    }
+})
 
 describe('Services', () => {
     let services: Services
@@ -79,12 +93,14 @@ describe('Services', () => {
             expect(MockWithingsAppConfigService).toHaveBeenCalledWith(
                 prisma,
                 expect.any(ConfigDirectoryService),
-                expect.any(CryptoService)
+                expect.any(CryptoService),
+                expect.any(LoggerService)
             )
             expect(MockSettingsService).toHaveBeenCalledWith(
                 prisma,
                 expect.any(WithingsAppConfigService),
-                expect.any(CryptoService)
+                expect.any(CryptoService),
+                expect.any(LoggerService)
             )
             expect(WithingsSyncRunner).toHaveBeenCalledWith(
                 expect.any(RunService),
@@ -95,7 +111,8 @@ describe('Services', () => {
             expect(MockSchedulerService).toHaveBeenCalledWith(
                 MockProfileService,
                 expect.any(RunService),
-                expect.any(WithingsSyncRunner)
+                expect.any(WithingsSyncRunner),
+                expect.any(LoggerService)
             )
         })
 
@@ -192,6 +209,111 @@ describe('Services', () => {
             // RunService is initialized first in constructor, so it should be available
             expect(() => uninitializedServices.getRunService()).not.toThrow()
             expect(uninitializedServices.getRunService()).toBeUndefined()
+        })
+    })
+
+    describe('Logger Integration', () => {
+        const testLogDir = '/tmp/test-logs'
+        const mockFs = jest.mocked(require('fs'))
+
+        beforeEach(() => {
+            // Reset mocks before each test
+            jest.clearAllMocks()
+            // Set up mock behavior
+            mockFs.existsSync.mockImplementation((path: string) => {
+                // Return false for test log dir to trigger mkdir
+                return path !== testLogDir && path !== '/tmp/test-data/logs'
+            })
+            mockFs.mkdirSync.mockImplementation(() => {})
+            mockFs.appendFileSync.mockImplementation(() => {})
+        })
+
+        it('should initialize logger during services initialization', () => {
+            services.initialize()
+            expect(services.getLogger()).toBeInstanceOf(LoggerService)
+        })
+
+        it('should create log directory during initialization', () => {
+            services.initialize()
+            // The logger creates the directory first
+            expect(mockFs.existsSync).toHaveBeenCalled()
+            // The Logger constructor calls mkdirSync when the log dir doesn't exist
+            expect(mockFs.mkdirSync).toHaveBeenCalledWith(
+                expect.stringContaining('logs'),
+                { recursive: true }
+            )
+        })
+
+        it('should write info logs', () => {
+            services.initialize()
+            const logger = services.getLogger()
+            logger.info('Test info message', 'run123', 'session456')
+
+            expect(mockFs.appendFileSync).toHaveBeenCalledWith(
+                expect.stringContaining('app.log'),
+                expect.stringContaining('"level":"INFO","message":"Test info message","runId":"run123","sessionId":"session456"'),
+                'utf8'
+            )
+        })
+
+        it('should write warn logs', () => {
+            services.initialize()
+            const logger = services.getLogger()
+            logger.warn('Test warning')
+
+            expect(mockFs.appendFileSync).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.stringContaining('"level":"WARN","message":"Test warning"'),
+                'utf8'
+            )
+        })
+
+        it('should write error logs', () => {
+            services.initialize()
+            const logger = services.getLogger()
+            logger.error('Test error', 'run123')
+
+            expect(mockFs.appendFileSync).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.stringContaining('"level":"ERROR","message":"Test error","runId":"run123"'),
+                'utf8'
+            )
+        })
+
+        it('should write debug logs', () => {
+            services.initialize()
+            const logger = services.getLogger()
+            logger.debug('Test debug')
+
+            expect(mockFs.appendFileSync).toHaveBeenCalledWith(
+                expect.any(String),
+                expect.stringContaining('"level":"DEBUG","message":"Test debug"'),
+                'utf8'
+            )
+        })
+
+        it('should create a RunLogger instance', () => {
+            services.initialize()
+            const logger = services.getLogger()
+            const runLogger = logger.createRunLogger('test-run-123')
+            expect(runLogger).toBeInstanceOf(RunLogger)
+        })
+
+        it('should set fastify logger', () => {
+            const mockFastifyLogger: FastifyLogger = {
+                info: jest.fn(),
+                warn: jest.fn(),
+                error: jest.fn(),
+                debug: jest.fn()
+            }
+
+            services.initialize()
+            services.initializeLoggerWithFastify(mockFastifyLogger)
+
+            const logger = services.getLogger()
+            logger.info('Test with fastify')
+
+            expect(mockFastifyLogger.info).toHaveBeenCalledWith('Test with fastify')
         })
     })
 })

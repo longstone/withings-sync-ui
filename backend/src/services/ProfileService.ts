@@ -1,11 +1,10 @@
 import prisma from '@/db/prisma'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {CryptoService} from '@/services/CryptoService'
-import {existsSync, unlinkSync, rmSync} from 'fs'
+import {existsSync, rmSync, unlinkSync} from 'fs'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {randomUUID} from 'crypto'
 import {ConfigDirectoryService} from "@/services/ConfigDirectoryService";
-
 
 
 export interface CreateProfileData {
@@ -39,8 +38,9 @@ export interface UpdateProfileData {
 export class ProfileService {
     constructor(
         private cryptoService: CryptoService,
-        private withingsAppConfigService?: WithingsAppConfigService,
-        private configDirectoryService?: ConfigDirectoryService,
+        private withingsAppConfigService: WithingsAppConfigService,
+        private configDirectoryService: ConfigDirectoryService,
+        private loggerService: LoggerService,
     ) {
     }
 
@@ -58,7 +58,7 @@ export class ProfileService {
                 }
             })
         } catch (error) {
-            logger.error(`Failed to fetch profiles for user ${ownerUserId}`)
+            this.loggerService.error(`Failed to fetch profiles for user ${ownerUserId}`)
             throw error
         }
     }
@@ -76,7 +76,7 @@ export class ProfileService {
                 }
             })
         } catch (error) {
-            logger.error('Failed to fetch all profiles')
+             this.loggerService.error('Failed to fetch all profiles')
             throw error
         }
     }
@@ -94,7 +94,7 @@ export class ProfileService {
                 }
             })
         } catch (error) {
-            logger.error(`Failed to fetch profile ${id}`)
+             this.loggerService.error(`Failed to fetch profile ${id}`)
             throw error
         }
     }
@@ -102,11 +102,11 @@ export class ProfileService {
     // Create new profile
     async createProfile(data: CreateProfileData) {
         try {
-            logger.info(`Creating profile for user ${data.ownerUserId}`)
+             this.loggerService.info(`Creating profile for user ${data.ownerUserId}`)
             
             // Use individual queries instead of transaction to avoid SQLite_READONLY_DBMOVED error
             // Ensure the user exists
-            logger.info(`Ensuring user exists: ${data.ownerUserId}`)
+             this.loggerService.info(`Ensuring user exists: ${data.ownerUserId}`)
             await prisma.user.upsert({
                 where: {id: data.ownerUserId},
                 update: {},
@@ -115,14 +115,14 @@ export class ProfileService {
                     displayName: data.ownerUserId === 'default-user' ? 'Default User' : data.ownerUserId,
                 },
             })
-            logger.info(`User ensured: ${data.ownerUserId}`)
+             this.loggerService.info(`User ensured: ${data.ownerUserId}`)
 
             // Extract credential fields from data
             const {garminUsername, garminPassword, trainerroadUsername, trainerroadPassword, ...profileData} = data
 
             // Generate profile ID for config directory
             const newProfileId = randomUUID()
-            logger.info(`Creating profile with ID: ${newProfileId}`)
+             this.loggerService.info(`Creating profile with ID: ${newProfileId}`)
 
             // Create the profile
             const newProfile = await prisma.syncProfile.create({
@@ -136,12 +136,12 @@ export class ProfileService {
                     ownerUser: true
                 }
             })
-            logger.info(`Profile created in database: ${newProfile.id}`)
+             this.loggerService.info(`Profile created in database: ${newProfile.id}`)
 
             // Create Garmin ServiceAccount if credentials provided
             let garminAccountId = null
             if (garminUsername && garminPassword) {
-                logger.info(`Creating Garmin service account`)
+                 this.loggerService.info(`Creating Garmin service account`)
                 const garminAccount = await prisma.serviceAccount.create({
                     data: {
                         type: 'garmin',
@@ -151,13 +151,13 @@ export class ProfileService {
                     }
                 })
                 garminAccountId = garminAccount.id
-                logger.info(`Garmin account created: ${garminAccountId}`)
+                 this.loggerService.info(`Garmin account created: ${garminAccountId}`)
             }
 
             // Create TrainerRoad ServiceAccount if credentials provided
             let trainerroadAccountId = null
             if (trainerroadUsername && trainerroadPassword) {
-                logger.info(`Creating TrainerRoad service account`)
+                 this.loggerService.info(`Creating TrainerRoad service account`)
                 const trainerroadAccount = await prisma.serviceAccount.create({
                     data: {
                         type: 'trainerroad',
@@ -167,12 +167,12 @@ export class ProfileService {
                     }
                 })
                 trainerroadAccountId = trainerroadAccount.id
-                logger.info(`TrainerRoad account created: ${trainerroadAccountId}`)
+                 this.loggerService.info(`TrainerRoad account created: ${trainerroadAccountId}`)
             }
 
             // Update profile with service account IDs if any were created
             if (garminAccountId || trainerroadAccountId) {
-                logger.info(`Updating profile with service account IDs`)
+                 this.loggerService.info(`Updating profile with service account IDs`)
                 const updatedProfile = await prisma.syncProfile.update({
                     where: {id: newProfile.id},
                     data: {
@@ -183,33 +183,33 @@ export class ProfileService {
                         ownerUser: true
                     }
                 })
-                logger.info(`Profile updated with service accounts`)
+                 this.loggerService.info(`Profile updated with service accounts`)
                 
-                logger.info(`Created profile ${updatedProfile.id} for user ${data.ownerUserId}`)
+                 this.loggerService.info(`Created profile ${updatedProfile.id} for user ${data.ownerUserId}`)
 
                 // Sync withings_app.json to new profile if configured
                 if (this.withingsAppConfigService) {
-                    logger.info(`Syncing Withings config to profile ${updatedProfile.id}`)
+                     this.loggerService.info(`Syncing Withings config to profile ${updatedProfile.id}`)
                     await this.withingsAppConfigService.syncToProfile(updatedProfile.id)
-                    logger.info(`Withings config synced to profile ${updatedProfile.id}`)
+                     this.loggerService.info(`Withings config synced to profile ${updatedProfile.id}`)
                 }
 
                 return updatedProfile
             }
 
-            logger.info(`Created profile ${newProfile.id} for user ${data.ownerUserId}`)
+             this.loggerService.info(`Created profile ${newProfile.id} for user ${data.ownerUserId}`)
 
             // Sync withings_app.json to new profile if configured
             if (this.withingsAppConfigService) {
-                logger.info(`Syncing Withings config to profile ${newProfile.id}`)
+                 this.loggerService.info(`Syncing Withings config to profile ${newProfile.id}`)
                 await this.withingsAppConfigService.syncToProfile(newProfile.id)
-                logger.info(`Withings config synced to profile ${newProfile.id}`)
+                 this.loggerService.info(`Withings config synced to profile ${newProfile.id}`)
             }
 
             return newProfile
         } catch (error: any) {
-            logger.error(`Failed to create profile for user ${data.ownerUserId}: ${error.message}`)
-            logger.error(error.stack || 'No stack trace')
+             this.loggerService.error(`Failed to create profile for user ${data.ownerUserId}: ${error.message}`)
+             this.loggerService.error(error.stack || 'No stack trace')
             throw error
         }
     }
@@ -343,10 +343,10 @@ export class ProfileService {
                 return updatedProfile
             })
 
-            logger.info(`Updated profile ${id}`)
+             this.loggerService.info(`Updated profile ${id}`)
             return profile
         } catch (error) {
-            logger.error(`Failed to update profile ${id}`)
+             this.loggerService.error(`Failed to update profile ${id}`)
             throw error
         }
     }
@@ -392,7 +392,7 @@ export class ProfileService {
                     try {
                         unlinkSync(logPath)
                     } catch (error) {
-                        logger.warn(`Failed to delete log file ${logPath} for profile ${id}`)
+                         this.loggerService.warn(`Failed to delete log file ${logPath} for profile ${id}`)
                     }
                 }
             }
@@ -402,17 +402,17 @@ export class ProfileService {
                 if (existsSync(profile.withingsConfigDir)) {
                     try {
                         rmSync(profile.withingsConfigDir, { recursive: true, force: true })
-                        logger.info(`Deleted withings config directory for profile ${id}: ${profile.withingsConfigDir}`)
+                         this.loggerService.info(`Deleted withings config directory for profile ${id}: ${profile.withingsConfigDir}`)
                     } catch (error) {
-                        logger.warn(`Failed to delete config directory ${profile.withingsConfigDir} for profile ${id}`)
+                         this.loggerService.warn(`Failed to delete config directory ${profile.withingsConfigDir} for profile ${id}`)
                     }
                 }
             }
 
-            logger.info(`Deleted profile ${id}`)
+             this.loggerService.info(`Deleted profile ${id}`)
             return true
         } catch (error) {
-            logger.error(`Failed to delete profile ${id}`)
+             this.loggerService.error(`Failed to delete profile ${id}`)
             throw error
         }
     }
@@ -428,10 +428,10 @@ export class ProfileService {
                 }
             })
 
-            logger.info(`${enabled ? 'Enabled' : 'Disabled'} profile ${id}`)
+             this.loggerService.info(`${enabled ? 'Enabled' : 'Disabled'} profile ${id}`)
             return profile
         } catch (error) {
-            logger.error(`Failed to toggle profile ${id}`)
+             this.loggerService.error(`Failed to toggle profile ${id}`)
             throw error
         }
     }
@@ -444,7 +444,7 @@ export class ProfileService {
             })
             return count > 0
         } catch (error) {
-            logger.error(`Failed to check if profile ${id} exists`)
+             this.loggerService.error(`Failed to check if profile ${id} exists`)
             throw error
         }
     }
@@ -464,7 +464,7 @@ export class ProfileService {
                 }
             })
         } catch (error) {
-            logger.error('Failed to fetch scheduled profiles')
+             this.loggerService.error('Failed to fetch scheduled profiles')
             throw error
         }
     }
@@ -481,10 +481,10 @@ export class ProfileService {
                 data: {withingsConfigDir: configDir}
             })
 
-            logger.info(`Created withings config directory for profile ${result.ownerUserId}: ${result.withingsConfigDir}`)
+             this.loggerService.info(`Created withings config directory for profile ${result.ownerUserId}: ${result.withingsConfigDir}`)
             return configDir
         } catch (error) {
-            logger.error(`Failed to create withings config directory for profile ${profileId}`)
+             this.loggerService.error(`Failed to create withings config directory for profile ${profileId}`)
             throw error
         }
     }
@@ -497,7 +497,7 @@ export class ProfileService {
 
             const profile = await this.getProfileById(profileId)
             if (!profile || !profile.withingsConfigDir) {
-                logger.warn(`No config directory found for profile ${profileId}`)
+                 this.loggerService.warn(`No config directory found for profile ${profileId}`)
                 return
             }
 
@@ -520,10 +520,10 @@ export class ProfileService {
                     }
                 }
 
-                logger.info(`Deleted all session files for profile ${profileId} from ${configDir}`)
+                 this.loggerService.info(`Deleted all session files for profile ${profileId} from ${configDir}`)
             }
         } catch (error) {
-            logger.error(`Failed to reset sessions for profile ${profileId}`, error instanceof Error ? error.message : String(error))
+             this.loggerService.error(`Failed to reset sessions for profile ${profileId}`, error instanceof Error ? error.message : String(error))
             throw error
         }
     }
@@ -545,15 +545,15 @@ export class ProfileService {
                 }
             }
 
-            logger.info(`Updated config directory for profile ${profileId} to ${configDir}`)
+             this.loggerService.info(`Updated config directory for profile ${profileId} to ${configDir}`)
         } catch (error) {
-            logger.error(`Failed to update config directory for profile ${profileId}`)
+             this.loggerService.error(`Failed to update config directory for profile ${profileId}`)
             throw error
         }
     }
 }
 
 // Export factory function to create instance with dependencies
-export function createProfileService(cryptoService: CryptoService, withingsAppConfigService?: WithingsAppConfigService, configDirectoryService?: ConfigDirectoryService) {
-    return new ProfileService(cryptoService, withingsAppConfigService, configDirectoryService)
+export function createProfileService(cryptoService: CryptoService, withingsAppConfigService: WithingsAppConfigService, configDirectoryService: ConfigDirectoryService, LoggerService: LoggerService) {
+    return new ProfileService(cryptoService, withingsAppConfigService, configDirectoryService, LoggerService)
 }

@@ -1,12 +1,13 @@
 import {WithingsAppConfig, WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {CryptoService} from '@/services/CryptoService'
 import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {LoggerService} from '@/services/LoggerService'
 import {writeFileSync} from 'fs'
 import {join} from 'path'
 import {PrismaClient, Settings} from '@/db/prisma-client-generated/client'
 
 // Mock all dependencies
-jest.mock('../utils/logger')
+jest.mock('../services/LoggerService')
 jest.mock('fs', () => ({
     existsSync: jest.fn(),
     unlinkSync: jest.fn(),
@@ -20,6 +21,7 @@ describe('WithingsAppConfigService', () => {
     let mockPrisma: jest.Mocked<PrismaClient>
     let mockConfigDirectoryService: jest.Mocked<ConfigDirectoryService>
     let mockCryptoService: jest.Mocked<CryptoService>
+    let mockLogger: jest.Mocked<LoggerService>
 
     beforeEach(() => {
         jest.clearAllMocks()
@@ -41,11 +43,24 @@ describe('WithingsAppConfigService', () => {
             encrypt: jest.fn(),
             decrypt: jest.fn()
         } as any
+        
+        // Create mock logger
+        mockLogger = {
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            debug: jest.fn(),
+            writeLog: jest.fn(),
+            setFastifyLogger: jest.fn(),
+            createRunLogger: jest.fn(),
+            readRunLogs: jest.fn()
+        } as any
 
         withingsAppConfigService = new WithingsAppConfigService(
             mockPrisma,
             mockConfigDirectoryService,
-            mockCryptoService
+            mockCryptoService,
+            mockLogger
         )
     })
 

@@ -1,6 +1,6 @@
 import {CryptoService} from '@/services/CryptoService'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {PrismaClient} from "@/db/prisma-client-generated/client";
 
 export interface Settings {
@@ -34,7 +34,8 @@ export class SettingsService {
   constructor(
     private prisma: PrismaClient,
     private withingsAppConfigService: WithingsAppConfigService,
-    private cryptoService: CryptoService
+    private cryptoService: CryptoService,
+    private logger: LoggerService
   ) {}
 
   /**
@@ -117,7 +118,7 @@ export class SettingsService {
       }
     })
 
-    logger.info('Settings updated', undefined, undefined)
+    this.logger.info('Settings updated', undefined, undefined)
 
     // Return updated settings without decrypting secrets
     return {
@@ -194,7 +195,7 @@ export class SettingsService {
       data: { logLevel }
     })
 
-    logger.info(`Log level updated to ${logLevel}`, undefined, undefined)
+    this.logger.info(`Log level updated to ${logLevel}`, undefined, undefined)
   }
 }
 

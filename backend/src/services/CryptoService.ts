@@ -1,7 +1,7 @@
 import {createCipheriv, createDecipheriv, randomBytes} from 'crypto'
 import {existsSync, readFileSync, writeFileSync} from 'fs'
 import {join} from 'path'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
 
 export class CryptoService {
@@ -9,10 +9,12 @@ export class CryptoService {
     private secretKey: Buffer
     private configDirectoryService: ConfigDirectoryService
     private keyFilePath: string
+    private logger: LoggerService
 
-    constructor(configDirectoryService: ConfigDirectoryService) {
+    constructor(configDirectoryService: ConfigDirectoryService, logger: LoggerService) {
         // Use injected service
         this.configDirectoryService = configDirectoryService
+        this.logger = logger
 
         // Ensure config directory exists
         this.configDirectoryService.provideConfigDirectory()
@@ -28,23 +30,23 @@ export class CryptoService {
         // First try environment variable
         const envKey = process.env.SYNC_SECRET_KEY
         if (envKey) {
-            logger.debug('Using secret key from environment variable')
+            this.logger.debug('Using secret key from environment variable')
             return Buffer.from(envKey, 'hex')
         }
 
         // Then try to read from file
         if (existsSync(this.keyFilePath)) {
-            logger.debug('Using secret key from file')
+            this.logger.debug('Using secret key from file')
             const storedKey = readFileSync(this.keyFilePath, 'utf-8').trim()
             return Buffer.from(storedKey, 'hex')
         }
 
         // Generate new key and persist it
-        logger.info('Generating new secret key')
+        this.logger.info('Generating new secret key')
         const newKey = randomBytes(32).toString('hex')
 
         writeFileSync(this.keyFilePath, newKey)
-        logger.info('New secret key generated and saved')
+        this.logger.info('New secret key generated and saved')
         return Buffer.from(newKey, 'hex')
     }
 
@@ -56,7 +58,7 @@ export class CryptoService {
             encrypted += cipher.final('hex')
             return iv.toString('hex') + ':' + encrypted
         } catch (error) {
-            logger.error('Encryption failed:', error instanceof Error ? error.message : String(error))
+            this.logger.error('Encryption failed:', error instanceof Error ? error.message : String(error))
             throw new Error('Failed to encrypt data')
         }
     }
@@ -75,19 +77,19 @@ export class CryptoService {
             decrypted += decipher.final('utf8')
             return decrypted
         } catch (error) {
-            logger.error('Decryption failed:', error instanceof Error ? error.message : String(error))
+            this.logger.error('Decryption failed:', error instanceof Error ? error.message : String(error))
             throw new Error('Failed to decrypt data')
         }
     }
 
     // Method to rotate the encryption key
     rotateKey(): void {
-        logger.info('Rotating encryption key')
+        this.logger.info('Rotating encryption key')
         const newKey = randomBytes(32).toString('hex')
 
         writeFileSync(this.keyFilePath, newKey)
         this.secretKey = Buffer.from(newKey, 'hex')
-        logger.info('Encryption key rotated successfully')
+        this.logger.info('Encryption key rotated successfully')
     }
 
     // Method to check if key file exists

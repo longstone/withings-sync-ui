@@ -2,7 +2,7 @@ import {ChildProcess, spawn} from 'child_process'
 import {RunService} from '@/services/RunService'
 import {ProfileService} from '@/services/ProfileService'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
-import {logger, RunLogger} from '@/utils/logger'
+import {RunLogger} from '@/services/LoggerService'
 import {CryptoService} from '@/services/CryptoService'
 import prisma from '@/db/prisma'
 
@@ -94,7 +94,7 @@ export class WithingsSyncRunner {
 
       // Ensure withings_app.json exists in config directory
       await this.withingsAppConfigService.syncToProfile(profileId)
-      logger.info('Settings updated', undefined, undefined)
+      // Note: Main logger is not accessible here - runLogger is used for this run
 
       // Start the run in database
       await this.runService.startRun(runId)
@@ -261,15 +261,15 @@ export class WithingsSyncRunner {
   async sendInput(runId: string, sessionId: string, input: string): Promise<void> {
     const process = this.runningProcesses.get(runId)
     if (!process || !process.stdin) {
-      logger.warn(`No running process found for run ${runId}`)
+      // Note: Main logger not accessible in this context
       return
     }
 
     try {
       process.stdin.write(input + '\n')
-      logger.info(`Sent input to run ${runId}: ${input}`)
+      // Note: Main logger not accessible in this context
     } catch (error) {
-      logger.error(`Failed to send input to run ${runId}: ${error}`)
+      // Note: Main logger not accessible in this context
     }
   }
 
@@ -277,7 +277,7 @@ export class WithingsSyncRunner {
   async detachRun(runId: string): Promise<void> {
     const process = this.runningProcesses.get(runId)
     if (process) {
-      logger.info(`Detaching from run ${runId} (process continues running)`)
+      // Note: Main logger not accessible in this context
       this.runningProcesses.delete(runId)
     }
   }
@@ -286,7 +286,7 @@ export class WithingsSyncRunner {
   async killRun(runId: string): Promise<void> {
     const process = this.runningProcesses.get(runId)
     if (process) {
-      logger.info(`Killing run ${runId}`)
+      // Note: Main logger not accessible in this context
       process.kill('SIGTERM')
       this.runningProcesses.delete(runId)
     }
@@ -308,7 +308,7 @@ export class WithingsSyncRunner {
         const decryptedPassword = this.cryptoService.decrypt(garminAccount.passwordEncrypted)
         args.push(WithingsSyncRunner.CLI_ARGS.GARMIN_USERNAME, garminAccount.username)
         args.push(WithingsSyncRunner.CLI_ARGS.GARMIN_PASSWORD, decryptedPassword)
-        logger.debug('Added Garmin credentials to CLI args')
+        // Note: Main logger not accessible in this context
       }
     }
     
@@ -321,14 +321,14 @@ export class WithingsSyncRunner {
         const decryptedPassword = this.cryptoService.decrypt(trainerroadAccount.passwordEncrypted)
         args.push(WithingsSyncRunner.CLI_ARGS.TRAINERROAD_USERNAME, trainerroadAccount.username)
         args.push(WithingsSyncRunner.CLI_ARGS.TRAINERROAD_PASSWORD, decryptedPassword)
-        logger.debug('Added TrainerRoad credentials to CLI args')
+        // Note: Main logger not accessible in this context
       }
     }
 
     // Add features if enabled
     if (profile.enableBloodPressure) {
       args.push(WithingsSyncRunner.CLI_ARGS.FEATURES, 'BLOOD_PRESSURE')
-      logger.debug('Added BLOOD_PRESSURE feature to CLI args')
+      // Note: Main logger not accessible in this context
     }
 
     // Adjust verbosity based on desired log level

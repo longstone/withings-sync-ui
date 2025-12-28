@@ -1,6 +1,7 @@
 import {CreateRunData, RunService, UpdateRunData} from '@/services/RunService'
 import {RunMode, RunStatus} from '@/types/enums'
-import {logger, RunLogger} from '@/utils/logger'
+import {LoggerService, RunLogger} from '@/services/LoggerService'
+import {LogDirectoryService} from '@/services/LogDirectoryService'
 
 // Mock all dependencies
 jest.mock('../db/prisma', () => ({
@@ -18,14 +19,22 @@ jest.mock('../db/prisma', () => ({
     }
 }))
 
-jest.mock('../utils/logger', () => ({
-    logger: {
+jest.mock('../services/LoggerService', () => ({
+    LoggerService: jest.fn().mockImplementation(() => ({
         createRunLogger: jest.fn(),
         info: jest.fn(),
         error: jest.fn(),
-        warn: jest.fn()
-    },
-    RunLogger: jest.fn().mockImplementation((runId, logFilePath) => ({
+        warn: jest.fn(),
+        debug: jest.fn()
+    })),
+    RunLogger: jest.fn().mockImplementation(() => ({
+        writeRunLog: jest.fn(),
+        logCliOutput: jest.fn()
+    }))
+}))
+
+jest.mock('../services/LogDirectoryService', () => ({
+    LogDirectoryService: jest.fn().mockImplementation(() => ({
         readRunLogs: jest.fn().mockReturnValue(['log line 1', 'log line 2'])
     }))
 }))
@@ -40,30 +49,50 @@ const mockFs = jest.mocked(require('fs'))
 
 describe('RunService', () => {
     let runService: RunService
+    let mockLogDirectoryService: jest.Mocked<LogDirectoryService>
+    let mockLogger: jest.Mocked<LoggerService>
     let mockRunLogger: jest.Mocked<RunLogger>
 
     beforeEach(() => {
         jest.clearAllMocks()
-        runService = new RunService()
-        
-        mockRunLogger = {
-            readRunLogs: jest.fn()
+        mockLogDirectoryService = {
+            readRunLogs: jest.fn(),
+            deleteLogFile: jest.fn()
         } as any
-        
-        jest.spyOn(logger, 'createRunLogger').mockReturnValue(mockRunLogger)
+
+        mockLogger = {
+            createRunLogger: jest.fn(),
+            info: jest.fn(),
+            error: jest.fn(),
+            warn: jest.fn(),
+            debug: jest.fn()
+        } as any
+
+        mockRunLogger = {
+            writeRunLog: jest.fn(),
+            logCliOutput: jest.fn()
+        } as any
+
+        // Mock the constructor to return our mock
+        ;(LogDirectoryService as jest.Mock).mockImplementation(() => mockLogDirectoryService)
+
+        // Set up the createRunLogger mock to return our mockRunLogger
+        mockLogger.createRunLogger.mockReturnValue(mockRunLogger)
+
+        runService = new RunService(mockLogger, mockLogDirectoryService)
     })
 
     describe('getAllRuns', () => {
         it('should fetch all runs with profile data', async () => {
             const mockRuns = [
-                { id: 'run1', syncProfile: { name: 'Profile 1' } },
-                { id: 'run2', syncProfile: { name: 'Profile 2' } }
-            ]
-            
+                    {id: 'run1', syncProfile: {name: 'Profile 1'}},
+                    {id: 'run2', syncProfile: {name: 'Profile 2'}}
+                ]
+
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            
+
             const result = await runService.getAllRuns()
-            
+
             expect(mockPrisma.syncRun.findMany).toHaveBeenCalledWith({
                 include: {
                     syncProfile: {
@@ -72,7 +101,7 @@ describe('RunService', () => {
                         }
                     }
                 },
-                orderBy: { startedAt: 'desc' }
+                orderBy: {startedAt: 'desc'}
             })
             expect(result).toEqual(mockRuns)
         })
@@ -80,23 +109,23 @@ describe('RunService', () => {
         it('should handle errors when fetching all runs', async () => {
             const error = new Error('Database error')
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockRejectedValue(error)
-            
+
             await expect(runService.getAllRuns()).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith('Failed to fetch all runs')
+            expect(mockLogger.error).toHaveBeenCalledWith('Failed to fetch all runs')
         })
     })
 
     describe('getRunById', () => {
         it('should fetch a run by ID', async () => {
             const runId = 'run123'
-            const mockRun = { id: runId, syncProfile: { name: 'Test Profile' } }
-            
+            const mockRun = {id: runId, syncProfile: {name: 'Test Profile'}}
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            
+
             const result = await runService.getRunById(runId)
-            
+
             expect(mockPrisma.syncRun.findUnique).toHaveBeenCalledWith({
-                where: { id: runId },
+                where: {id: runId},
                 include: {
                     syncProfile: {
                         include: {
@@ -111,11 +140,11 @@ describe('RunService', () => {
         it('should handle errors when fetching run by ID', async () => {
             const runId = 'run123'
             const error = new Error('Database error')
-            
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockRejectedValue(error)
-            
+
             await expect(runService.getRunById(runId)).rejects.toThrow(error)
-            expect(logger.error).toHaveBeenCalledWith(`Failed to fetch run ${runId}`)
+            expect(mockLogger.error).toHaveBeenCalledWith(`Failed to fetch run ${runId}`)
         })
     })
 
@@ -123,9 +152,9 @@ describe('RunService', () => {
         it('should return the log level for a run', () => {
             const runId = 'run123'
             runService['runLogLevels'].set(runId, 'debug')
-            
+
             const result = runService.getRunLogLevel(runId)
-            
+
             expect(result).toBe('debug')
         })
 
@@ -139,16 +168,16 @@ describe('RunService', () => {
         it('should fetch runs for a specific profile', async () => {
             const profileId = 'profile123'
             const mockRuns = [
-                { id: 'run1', syncProfileId: profileId },
-                { id: 'run2', syncProfileId: profileId }
-            ]
-            
+                    {id: 'run1', syncProfileId: profileId},
+                    {id: 'run2', syncProfileId: profileId}
+                ]
+
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            
+
             const result = await runService.getRunsByProfileId(profileId)
-            
+
             expect(mockPrisma.syncRun.findMany).toHaveBeenCalledWith({
-                where: { syncProfileId: profileId },
+                where: {syncProfileId: profileId},
                 include: {
                     syncProfile: {
                         include: {
@@ -156,7 +185,7 @@ describe('RunService', () => {
                         }
                     }
                 },
-                orderBy: { startedAt: 'desc' }
+                orderBy: {startedAt: 'desc'}
             })
             expect(result).toEqual(mockRuns)
         })
@@ -169,12 +198,12 @@ describe('RunService', () => {
                 mode: RunMode.MANUAL,
                 logLevel: 'debug'
             }
-            const mockRun = { id: 'run123', ...createData, status: RunStatus.PENDING }
-            
+            const mockRun = {id: 'run123', ...createData, status: RunStatus.PENDING}
+
             ;(mockPrisma.syncRun.create as jest.Mock).mockResolvedValue(mockRun)
-            
+
             const result = await runService.createRun(createData)
-            
+
             expect(mockPrisma.syncRun.create).toHaveBeenCalledWith({
                 data: {
                     syncProfileId: createData.syncProfileId,
@@ -198,12 +227,12 @@ describe('RunService', () => {
                 syncProfileId: 'profile123',
                 mode: RunMode.CRON
             }
-            const mockRun = { id: 'run123', ...createData, status: RunStatus.PENDING }
-            
+            const mockRun = {id: 'run123', ...createData, status: RunStatus.PENDING}
+
             ;(mockPrisma.syncRun.create as jest.Mock).mockResolvedValue(mockRun)
-            
+
             await runService.createRun(createData)
-            
+
             expect(runService.getRunLogLevel('run123')).toBe('info')
         })
     })
@@ -215,14 +244,14 @@ describe('RunService', () => {
                 status: RunStatus.SUCCESS,
                 exitCode: 0
             }
-            const mockRun = { id: runId, ...updateData }
-            
+            const mockRun = {id: runId, ...updateData}
+
             ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue(mockRun)
-            
+
             const result = await runService.updateRun(runId, updateData)
-            
+
             expect(mockPrisma.syncRun.update).toHaveBeenCalledWith({
-                where: { id: runId },
+                where: {id: runId},
                 data: updateData,
                 include: {
                     syncProfile: {
@@ -239,17 +268,17 @@ describe('RunService', () => {
     describe('startRun', () => {
         const runId = 'run123'
         const profileId = 'profile123'
-        const mockRun = { id: runId, syncProfileId: profileId, status: RunStatus.PENDING }
+        const mockRun = {id: runId, syncProfileId: profileId, status: RunStatus.PENDING}
 
         it('should start a run and mark profile as running', async () => {
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.RUNNING })
-            
-            const result = await runService.startRun(runId)
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.RUNNING})
+
+            await runService.startRun(runId)
+
             expect(runService.getRunningProfileIds()).toContain(profileId)
             expect(mockPrisma.syncRun.update).toHaveBeenCalledWith({
-                where: { id: runId },
+                where: {id: runId},
                 data: {
                     status: RunStatus.RUNNING,
                     startedAt: expect.any(Date)
@@ -266,14 +295,14 @@ describe('RunService', () => {
 
         it('should throw error if run not found', async () => {
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(null)
-            
+
             await expect(runService.startRun(runId)).rejects.toThrow(`Run ${runId} not found`)
         })
 
         it('should throw error if profile is already running', async () => {
             runService['runningProfileIds'].add(profileId)
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            
+
             await expect(runService.startRun(runId)).rejects.toThrow(`Profile ${profileId} is already running`)
         })
     })
@@ -281,7 +310,7 @@ describe('RunService', () => {
     describe('completeRun', () => {
         const runId = 'run123'
         const profileId = 'profile123'
-        const mockRun = { id: runId, syncProfileId: profileId, status: RunStatus.RUNNING }
+        const mockRun = {id: runId, syncProfileId: profileId, status: RunStatus.RUNNING}
 
         beforeEach(() => {
             runService['runningProfileIds'].add(profileId)
@@ -290,14 +319,14 @@ describe('RunService', () => {
 
         it('should complete a run and release profile lock', async () => {
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.SUCCESS })
-            
-            const result = await runService.completeRun(runId, RunStatus.SUCCESS, 0)
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.SUCCESS})
+
+            await runService.completeRun(runId, RunStatus.SUCCESS, 0)
+
             expect(runService.getRunningProfileIds()).not.toContain(profileId)
             expect(runService.getRunLogLevel(runId)).toBeUndefined()
             expect(mockPrisma.syncRun.update).toHaveBeenCalledWith({
-                where: { id: runId },
+                where: {id: runId},
                 data: {
                     status: RunStatus.SUCCESS,
                     exitCode: 0,
@@ -316,10 +345,10 @@ describe('RunService', () => {
 
         it('should handle completion with error message', async () => {
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.FAILED })
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.FAILED})
+
             await runService.completeRun(runId, RunStatus.FAILED, 1, 'Test error')
-            
+
             expect(mockPrisma.syncRun.update).toHaveBeenCalledWith(
                 expect.objectContaining({
                     data: expect.objectContaining({
@@ -335,29 +364,29 @@ describe('RunService', () => {
     describe('failRun and succeedRun', () => {
         it('should fail a run', async () => {
             const runId = 'run123'
-            const mockRun = { id: runId, syncProfileId: 'profile123', status: RunStatus.RUNNING }
-            
+            const mockRun = {id: runId, syncProfileId: 'profile123', status: RunStatus.RUNNING}
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.FAILED })
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.FAILED})
+
             jest.spyOn(runService, 'completeRun').mockResolvedValue({} as any)
-            
+
             await runService.failRun(runId, 'Test error', 1)
-            
+
             expect(runService.completeRun).toHaveBeenCalledWith(runId, RunStatus.FAILED, 1, 'Test error')
         })
 
         it('should succeed a run', async () => {
             const runId = 'run123'
-            const mockRun = { id: runId, syncProfileId: 'profile123', status: RunStatus.RUNNING }
-            
+            const mockRun = {id: runId, syncProfileId: 'profile123', status: RunStatus.RUNNING}
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.SUCCESS })
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.SUCCESS})
+
             jest.spyOn(runService, 'completeRun').mockResolvedValue({} as any)
-            
+
             await runService.succeedRun(runId, 0)
-            
+
             expect(runService.completeRun).toHaveBeenCalledWith(runId, RunStatus.SUCCESS, 0)
         })
     })
@@ -365,11 +394,11 @@ describe('RunService', () => {
     describe('isProfileRunning', () => {
         it('should return true if profile is running', async () => {
             const profileId = 'profile123'
-            ;(mockPrisma.syncRun.findFirst as jest.Mock).mockResolvedValue({ id: 'run1', status: RunStatus.RUNNING })
+            ;(mockPrisma.syncRun.findFirst as jest.Mock).mockResolvedValue({id: 'run1', status: RunStatus.RUNNING})
             jest.spyOn(runService, 'cleanupStaleRuns').mockResolvedValue(0)
-            
+
             const result = await runService.isProfileRunning(profileId)
-            
+
             expect(result).toBe(true)
         })
 
@@ -377,9 +406,9 @@ describe('RunService', () => {
             const profileId = 'profile123'
             ;(mockPrisma.syncRun.findFirst as jest.Mock).mockResolvedValue(null)
             jest.spyOn(runService, 'cleanupStaleRuns').mockResolvedValue(0)
-            
+
             const result = await runService.isProfileRunning(profileId)
-            
+
             expect(result).toBe(false)
         })
     })
@@ -387,12 +416,12 @@ describe('RunService', () => {
     describe('getRunningRunForProfile', () => {
         it('should get the running run for a profile', async () => {
             const profileId = 'profile123'
-            const mockRun = { id: 'run1', syncProfileId: profileId, status: RunStatus.RUNNING }
-            
+            const mockRun = {id: 'run1', syncProfileId: profileId, status: RunStatus.RUNNING}
+
             ;(mockPrisma.syncRun.findFirst as jest.Mock).mockResolvedValue(mockRun)
-            
+
             const result = await runService.getRunningRunForProfile(profileId)
-            
+
             expect(mockPrisma.syncRun.findFirst).toHaveBeenCalledWith({
                 where: {
                     syncProfileId: profileId,
@@ -414,9 +443,9 @@ describe('RunService', () => {
         it('should return array of running profile IDs', () => {
             runService['runningProfileIds'].add('profile1')
             runService['runningProfileIds'].add('profile2')
-            
+
             const result = runService.getRunningProfileIds()
-            
+
             expect(result).toEqual(['profile1', 'profile2'])
         })
     })
@@ -424,24 +453,27 @@ describe('RunService', () => {
     describe('getRunLogs', () => {
         it('should get run logs', async () => {
             const runId = 'run123'
-            const mockRun = { id: runId, logFilePath: '/path/to/log.log' }
+            const profileId = 'profile123'
+            const mockRun = {id: runId, syncProfileId: profileId, logFilePath: '/path/to/log.log'}
             const mockLogs = ['log line 1', 'log line 2']
-            
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            
+            mockLogDirectoryService.readRunLogs.mockReturnValue(mockLogs)
+
             const result = await runService.getRunLogs(runId)
-            
+
             expect(result).toEqual(mockLogs)
+            expect(mockLogDirectoryService.readRunLogs).toHaveBeenCalledWith(profileId, runId)
         })
 
         it('should return empty array if run has no log file', async () => {
             const runId = 'run123'
-            const mockRun = { id: runId, logFilePath: null }
-            
+            const mockRun = {id: runId, logFilePath: null}
+
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            
+
             const result = await runService.getRunLogs(runId)
-            
+
             expect(result).toEqual([])
         })
     })
@@ -449,22 +481,22 @@ describe('RunService', () => {
     describe('createRunLogger', () => {
         it('should create a run logger', () => {
             const runId = 'run123'
-            
+
             const result = runService.createRunLogger(runId)
-            
-            expect(logger.createRunLogger).toHaveBeenCalledWith(runId)
+
+            expect(mockLogger.createRunLogger).toHaveBeenCalledWith(runId)
             expect(result).toBe(mockRunLogger)
         })
     })
 
     describe('getRecentRuns', () => {
         it('should get recent runs with default limit', async () => {
-            const mockRuns = [{ id: 'run1' }, { id: 'run2' }]
-            
+            const mockRuns = [{id: 'run1'}, {id: 'run2'}]
+
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            
+
             const result = await runService.getRecentRuns()
-            
+
             expect(mockPrisma.syncRun.findMany).toHaveBeenCalledWith({
                 include: {
                     syncProfile: {
@@ -473,21 +505,21 @@ describe('RunService', () => {
                         }
                     }
                 },
-                orderBy: { startedAt: 'desc' },
+                orderBy: {startedAt: 'desc'},
                 take: 50
             })
             expect(result).toEqual(mockRuns)
         })
 
         it('should get recent runs with custom limit', async () => {
-            const mockRuns = [{ id: 'run1' }]
-            
+            const mockRuns = [{id: 'run1'}]
+
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            
+
             await runService.getRecentRuns(10)
-            
+
             expect(mockPrisma.syncRun.findMany).toHaveBeenCalledWith(
-                expect.objectContaining({ take: 10 })
+                expect.objectContaining({take: 10})
             )
         })
     })
@@ -495,14 +527,14 @@ describe('RunService', () => {
     describe('getRunsByStatus', () => {
         it('should get runs by status', async () => {
             const status = RunStatus.SUCCESS
-            const mockRuns = [{ id: 'run1', status }]
-            
+            const mockRuns = [{id: 'run1', status}]
+
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            
+
             const result = await runService.getRunsByStatus(status)
-            
+
             expect(mockPrisma.syncRun.findMany).toHaveBeenCalledWith({
-                where: { status },
+                where: {status},
                 include: {
                     syncProfile: {
                         include: {
@@ -510,7 +542,7 @@ describe('RunService', () => {
                         }
                     }
                 },
-                orderBy: { startedAt: 'desc' }
+                orderBy: {startedAt: 'desc'}
             })
             expect(result).toEqual(mockRuns)
         })
@@ -519,18 +551,21 @@ describe('RunService', () => {
     describe('cleanupOldRuns', () => {
         it('should clean up old runs and their log files', async () => {
             const mockRuns = [
-                { id: 'run1', logFilePath: '/path/to/log1.log' },
-                { id: 'run2', logFilePath: '/path/to/log2.log' },
-                { id: 'run3', logFilePath: null }
+                {id: 'run1', logFilePath: '/path/to/log1.log'},
+                {id: 'run2', logFilePath: '/path/to/log2.log'},
+                {id: 'run3', logFilePath: null}
             ]
-            
+
             mockFs.existsSync.mockReturnValue(true)
+            mockLogDirectoryService.deleteLogFile.mockReturnValue(true)
             ;(mockPrisma.syncRun.findMany as jest.Mock).mockResolvedValue(mockRuns)
-            ;(mockPrisma.syncRun.deleteMany as jest.Mock).mockResolvedValue({ count: 3 })
-            
+            ;(mockPrisma.syncRun.deleteMany as jest.Mock).mockResolvedValue({count: 3})
+
             const result = await runService.cleanupOldRuns(30)
-            
-            expect(mockFs.unlinkSync).toHaveBeenCalledTimes(2)
+
+            expect(mockLogDirectoryService.deleteLogFile).toHaveBeenCalledTimes(2)
+            expect(mockLogDirectoryService.deleteLogFile).toHaveBeenCalledWith('/path/to/log1.log')
+            expect(mockLogDirectoryService.deleteLogFile).toHaveBeenCalledWith('/path/to/log2.log')
             expect(mockPrisma.syncRun.deleteMany).toHaveBeenCalledWith({
                 where: {
                     startedAt: {
@@ -541,16 +576,16 @@ describe('RunService', () => {
                     }
                 }
             })
-            expect(result).toEqual({ deletedRuns: 3, deletedLogFiles: 2 })
+            expect(result).toEqual({deletedRuns: 3, deletedLogFiles: 2})
         })
     })
 
     describe('cleanupStaleRuns', () => {
         it('should mark stale runs as failed', async () => {
-            ;(mockPrisma.syncRun.updateMany as jest.Mock).mockResolvedValue({ count: 2 })
-            
+            ;(mockPrisma.syncRun.updateMany as jest.Mock).mockResolvedValue({count: 2})
+
             const result = await runService.cleanupStaleRuns()
-            
+
             expect(mockPrisma.syncRun.updateMany).toHaveBeenCalledWith({
                 where: {
                     status: RunStatus.RUNNING,
@@ -571,36 +606,36 @@ describe('RunService', () => {
     describe('cancelRun', () => {
         const runId = 'run123'
         const profileId = 'profile123'
-        const mockRun = { id: runId, syncProfileId: profileId, status: RunStatus.RUNNING }
+        const mockRun = {id: runId, syncProfileId: profileId, status: RunStatus.RUNNING}
 
         it('should cancel a running run', async () => {
             runService['runningProfileIds'].add(profileId)
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(mockRun)
-            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.FAILED })
-            
+            ;(mockPrisma.syncRun.update as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.FAILED})
+
             const result = await runService.cancelRun(runId)
-            
+
             expect(runService.getRunningProfileIds()).not.toContain(profileId)
             expect(mockPrisma.syncRun.update).toHaveBeenCalledWith({
-                where: { id: runId },
+                where: {id: runId},
                 data: {
                     status: RunStatus.FAILED,
                     finishedAt: expect.any(Date),
                     errorMessage: 'Run cancelled by user'
                 }
             })
-            expect(result).toEqual({ ...mockRun, status: RunStatus.FAILED })
+            expect(result).toEqual({...mockRun, status: RunStatus.FAILED})
         })
 
         it('should throw error if run not found', async () => {
             ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue(null)
-            
+
             await expect(runService.cancelRun(runId)).rejects.toThrow(`Run ${runId} not found`)
         })
 
         it('should throw error if run is not running', async () => {
-            ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue({ ...mockRun, status: RunStatus.SUCCESS })
-            
+            ;(mockPrisma.syncRun.findUnique as jest.Mock).mockResolvedValue({...mockRun, status: RunStatus.SUCCESS})
+
             await expect(runService.cancelRun(runId)).rejects.toThrow(
                 `Cannot cancel run ${runId}: status is ${RunStatus.SUCCESS}`
             )

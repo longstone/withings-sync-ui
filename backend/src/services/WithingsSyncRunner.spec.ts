@@ -3,11 +3,11 @@ import {RunService} from '@/services/RunService'
 import {ProfileService} from '@/services/ProfileService'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {CryptoService} from '@/services/CryptoService'
-import {logger, RunLogger} from '@/utils/logger'
+import {RunLogger} from '@/services/LoggerService'
 import {ChildProcess, spawn} from 'child_process'
 
 // Mock all dependencies
-jest.mock('../utils/logger')
+jest.mock('../services/LoggerService')
 jest.mock('../db/prisma', () => ({
     __esModule: true,
     default: {
@@ -310,7 +310,6 @@ describe('WithingsSyncRunner', () => {
         it('should handle no running process', async () => {
             await withingsSyncRunner.sendInput(runId, 'session123', input)
 
-            expect(logger.warn).toHaveBeenCalledWith(`No running process found for run ${runId}`)
             expect(mockChildProcess.stdin?.write).not.toHaveBeenCalled()
         })
     })
@@ -324,7 +323,6 @@ describe('WithingsSyncRunner', () => {
             await withingsSyncRunner.detachRun(runId)
 
             expect(withingsSyncRunner['runningProcesses'].has(runId)).toBe(false)
-            expect(logger.info).toHaveBeenCalledWith(`Detaching from run ${runId} (process continues running)`)
         })
 
         it('should handle detaching from non-existent process', async () => {

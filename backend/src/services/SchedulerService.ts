@@ -1,10 +1,10 @@
 import * as schedule from 'node-schedule'
-import { RunMode } from '@/types/enums'
-import { ProfileService } from '@/services/ProfileService'
-import { RunService } from '@/services/RunService'
-import { WithingsSyncRunner } from '@/services/WithingsSyncRunner'
-import { logger } from '@/utils/logger'
-import { randomWeeklyCronOnDay, randomMinute, randomHour } from '@/utils/random'
+import {RunMode} from '@/types/enums'
+import {ProfileService} from '@/services/ProfileService'
+import {RunService} from '@/services/RunService'
+import {WithingsSyncRunner} from '@/services/WithingsSyncRunner'
+import {LoggerService} from '@/services/LoggerService'
+import {randomHour, randomMinute, randomWeeklyCronOnDay} from '@/utils/random'
 
 export interface SchedulerStatus {
   running: boolean
@@ -26,21 +26,24 @@ export class SchedulerService {
   private profileService: ProfileService
   private runService: RunService
   private withingsSyncRunner: WithingsSyncRunner
+  private logger: LoggerService
 
   constructor(
     profileService: ProfileService,
     runService: RunService,
-    withingsSyncRunner: WithingsSyncRunner
+    withingsSyncRunner: WithingsSyncRunner,
+    logger: LoggerService
   ) {
     this.profileService = profileService
     this.runService = runService
     this.withingsSyncRunner = withingsSyncRunner
+    this.logger = logger
   }
 
   // Initialize scheduler and load all scheduled profiles
   async initialize(): Promise<void> {
     try {
-      logger.info('Initializing scheduler service')
+      this.logger.info('Initializing scheduler service')
       
       // Clean up any orphaned runs from previous crashes
       await this.cleanupOrphanedRuns()
@@ -55,10 +58,10 @@ export class SchedulerService {
       this.scheduleWeeklyCleanup()
       
       this.isRunning = true
-      logger.info(`Scheduler initialized with ${this.scheduledJobs.size} scheduled jobs`)
+      this.logger.info(`Scheduler initialized with ${this.scheduledJobs.size} scheduled jobs`)
       
     } catch (error) {
-      logger.error('Failed to initialize scheduler', error instanceof Error ? error.message : String(error))
+      this.logger.error('Failed to initialize scheduler', error instanceof Error ? error.message : String(error))
       throw error
     }
   }
@@ -107,7 +110,7 @@ export class SchedulerService {
       
       // Log the resolved cron for debugging
       if (cronExpression !== resolvedCronExpression) {
-        logger.info(`Resolved random cron: ${cronExpression} -> ${resolvedCronExpression}`)
+        this.logger.info(`Resolved random cron: ${cronExpression} -> ${resolvedCronExpression}`)
       }
 
       // Create new scheduled job
@@ -120,10 +123,10 @@ export class SchedulerService {
       }
 
       this.scheduledJobs.set(profileId, job)
-      logger.info(`Scheduled profile ${profile.name} (${profileId}) with cron: ${resolvedCronExpression}`)
+      this.logger.info(`Scheduled profile ${profile.name} (${profileId}) with cron: ${resolvedCronExpression}`)
       
     } catch (error) {
-      logger.error(`Failed to schedule profile ${profileId}`, error instanceof Error ? error.message : String(error))
+      this.logger.error(`Failed to schedule profile ${profileId}`, error instanceof Error ? error.message : String(error))
       throw error
     }
   }
@@ -135,7 +138,7 @@ export class SchedulerService {
       job.cancel()
       this.scheduledJobs.delete(profileId)
       this.resolvedCronExpressions.delete(profileId)
-      logger.info(`Unscheduled profile ${profileId}`)
+      this.logger.info(`Unscheduled profile ${profileId}`)
     }
   }
 
@@ -156,7 +159,7 @@ export class SchedulerService {
   // Refresh all schedules from database
   async refreshSchedules(): Promise<void> {
     try {
-      logger.info('Refreshing schedules from database')
+      this.logger.info('Refreshing schedules from database')
       
       // Get all scheduled profiles
       const scheduledProfiles = await this.profileService.getScheduledProfiles()
@@ -172,15 +175,15 @@ export class SchedulerService {
           try {
             await this.scheduleProfile(profile.id, profile.scheduleCron)
           } catch (error) {
-            logger.error(`Failed to schedule profile ${profile.id}: ${error}`)
+            this.logger.error(`Failed to schedule profile ${profile.id}: ${error}`)
           }
         }
       }
 
-      logger.info(`Refreshed schedules: ${this.scheduledJobs.size} active jobs`)
+      this.logger.info(`Refreshed schedules: ${this.scheduledJobs.size} active jobs`)
       
     } catch (error) {
-      logger.error('Failed to refresh schedules', error instanceof Error ? error.message : String(error))
+      this.logger.error('Failed to refresh schedules', error instanceof Error ? error.message : String(error))
       throw error
     }
   }
@@ -215,7 +218,7 @@ export class SchedulerService {
   // Shutdown scheduler gracefully
   async shutdown(): Promise<void> {
     try {
-      logger.info('Shutting down scheduler service')
+      this.logger.info('Shutting down scheduler service')
       
       this.isRunning = false
       
@@ -234,14 +237,14 @@ export class SchedulerService {
       // Cancel all scheduled jobs
       for (const [profileId, job] of this.scheduledJobs) {
         job.cancel()
-        logger.info(`Cancelled scheduled job for profile ${profileId}`)
+        this.logger.info(`Cancelled scheduled job for profile ${profileId}`)
       }
       
       this.scheduledJobs.clear()
-      logger.info('Scheduler shutdown completed')
+      this.logger.info('Scheduler shutdown completed')
       
     } catch (error) {
-      logger.error('Error during scheduler shutdown', error instanceof Error ? error.message : String(error))
+      this.logger.error('Error during scheduler shutdown', error instanceof Error ? error.message : String(error))
       throw error
     }
   }
@@ -249,18 +252,18 @@ export class SchedulerService {
   // Execute a scheduled run
   private async executeScheduledRun(profileId: string): Promise<void> {
     try {
-      logger.info(`Executing scheduled run for profile ${profileId}`)
+      this.logger.info(`Executing scheduled run for profile ${profileId}`)
       
       // Check if profile is already running
       if (await this.runService.isProfileRunning(profileId)) {
-        logger.warn(`Skipping scheduled run for profile ${profileId}: profile already running`)
+        this.logger.warn(`Skipping scheduled run for profile ${profileId}: profile already running`)
         return
       }
 
       // Get profile details
       const profile = await this.profileService.getProfileById(profileId)
       if (!profile || !profile.enabled) {
-        logger.warn(`Skipping scheduled run for profile ${profileId}: profile not found or disabled`)
+        this.logger.warn(`Skipping scheduled run for profile ${profileId}: profile not found or disabled`)
         return
       }
 
@@ -277,20 +280,20 @@ export class SchedulerService {
       })
 
       if (result.success) {
-        logger.info(`Scheduled run completed successfully for profile ${profileId}`)
+        this.logger.info(`Scheduled run completed successfully for profile ${profileId}`)
       } else {
-        logger.error(`Scheduled run failed for profile ${profileId}: ${result.errorMessage}`)
+        this.logger.error(`Scheduled run failed for profile ${profileId}: ${result.errorMessage}`)
       }
       
     } catch (error) {
-      logger.error(`Scheduled run execution failed for profile ${profileId}`, error instanceof Error ? error.message : String(error))
+      this.logger.error(`Scheduled run execution failed for profile ${profileId}`, error instanceof Error ? error.message : String(error))
     }
   }
 
   // Clean up orphaned runs (runs that are still RUNNING from previous crashes)
   private async cleanupOrphanedRuns(): Promise<void> {
     try {
-      logger.info('Cleaning up orphaned runs')
+      this.logger.info('Cleaning up orphaned runs')
       
       const runningRuns = await this.runService.getRunsByStatus('RUNNING' as any)
       let cleanedCount = 0
@@ -305,11 +308,11 @@ export class SchedulerService {
       }
       
       if (cleanedCount > 0) {
-        logger.info(`Cleaned up ${cleanedCount} orphaned runs`)
+        this.logger.info(`Cleaned up ${cleanedCount} orphaned runs`)
       }
       
     } catch (error) {
-      logger.error('Failed to cleanup orphaned runs', error instanceof Error ? error.message : String(error))
+      this.logger.error('Failed to cleanup orphaned runs', error instanceof Error ? error.message : String(error))
     }
   }
 
@@ -319,7 +322,7 @@ export class SchedulerService {
       try {
         await this.refreshSchedules()
       } catch (error) {
-        logger.error('Error during schedule reconciliation', error instanceof Error ? error.message : String(error))
+        this.logger.error('Error during schedule reconciliation', error instanceof Error ? error.message : String(error))
       }
     }, 5 * 60 * 1000) // Every 5 minutes
   }
@@ -331,18 +334,18 @@ export class SchedulerService {
     const cronExpression = randomWeeklyCronOnDay(0) // 0 = Sunday
     this.cleanupJob = schedule.scheduleJob(cronExpression, async () => {
       try {
-        logger.info('Starting weekly cleanup of old runs and log files')
+        this.logger.info('Starting weekly cleanup of old runs and log files')
         const result = await this.runService.cleanupOldRuns(30) // Clean up runs older than 30 days
-        logger.info(`Weekly cleanup completed: deleted ${result.deletedRuns} runs and ${result.deletedLogFiles} log files`)
+        this.logger.info(`Weekly cleanup completed: deleted ${result.deletedRuns} runs and ${result.deletedLogFiles} log files`)
       } catch (error) {
-        logger.error('Weekly cleanup failed', error instanceof Error ? error.message : String(error))
+        this.logger.error('Weekly cleanup failed', error instanceof Error ? error.message : String(error))
       }
     })
     
     if (this.cleanupJob) {
-      logger.info(`Scheduled weekly cleanup job with cron at: ${cronExpression}`)
+      this.logger.info(`Scheduled weekly cleanup job with cron at: ${cronExpression}`)
     } else {
-      logger.error(`Failed to schedule weekly cleanup job with cron at: ${cronExpression} (NO CLEANUP IN PLACE)`)
+      this.logger.error(`Failed to schedule weekly cleanup job with cron at: ${cronExpression} (NO CLEANUP IN PLACE)`)
     }
   }
 

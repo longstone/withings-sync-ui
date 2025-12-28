@@ -1,4 +1,5 @@
 import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {LoggerService} from '@/services/LoggerService'
 import {join} from 'path'
 import {Dirent} from 'node:fs'
 
@@ -17,12 +18,24 @@ const mockFs = jest.mocked(require('fs'))
 
 describe('ConfigDirectoryService', () => {
     let service: ConfigDirectoryService
+    let mockLogger: jest.Mocked<LoggerService>
     const originalEnv = process.env
+    const testDataDir = '/tmp/test-data'
 
     beforeEach(() => {
         jest.resetModules()
         jest.clearAllMocks()
-        service = new ConfigDirectoryService()
+        mockLogger = {
+            info: jest.fn(),
+            warn: jest.fn(),
+            error: jest.fn(),
+            debug: jest.fn(),
+            writeLog: jest.fn(),
+            setFastifyLogger: jest.fn(),
+            createRunLogger: jest.fn(),
+            readRunLogs: jest.fn()
+        } as any
+        service = new ConfigDirectoryService(mockLogger, testDataDir)
     })
 
     afterEach(() => {
@@ -32,26 +45,24 @@ describe('ConfigDirectoryService', () => {
     describe('constructor', () => {
         it('should use default data directory when DATA_DIR is not set', () => {
             delete process.env.DATA_DIR
-            const newService = new ConfigDirectoryService()
+            const newService = new ConfigDirectoryService(mockLogger, '/app/data/')
             expect(newService['dataDir']).toBe('/app/data/')
             expect(newService['configDir']).toBe('/app/data/withings-config')
         })
 
         it('should use custom data directory when DATA_DIR is set', () => {
             process.env.DATA_DIR = '/custom/data'
-            const newService = new ConfigDirectoryService()
+            const newService = new ConfigDirectoryService(mockLogger, '/custom/data')
             expect(newService['dataDir']).toBe('/custom/data')
             expect(newService['configDir']).toBe('/custom/data/withings-config')
         })
 
         it('should log the config directory path', () => {
-            const consoleSpy = jest.spyOn(console, 'log').mockImplementation()
-            new ConfigDirectoryService()
-            expect(consoleSpy).toHaveBeenCalledWith(
-                'Config Directory being used:',
-                expect.stringContaining('withings-config')
+            mockLogger.info.mockClear()
+            new ConfigDirectoryService(mockLogger, testDataDir)
+            expect(mockLogger.info).toHaveBeenCalledWith(
+                'Config Directory being used: /tmp/test-data/withings-config'
             )
-            consoleSpy.mockRestore()
         })
     })
 

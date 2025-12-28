@@ -1,4 +1,5 @@
 import {CryptoService} from '@/services/CryptoService'
+import {LoggerService} from '@/services/LoggerService'
 import {join} from 'path'
 import * as fs from 'fs'
 
@@ -46,7 +47,7 @@ class MockConfigDirectoryService {
 
   setKeyFileContent(content: string) {
     this.keyFileContent = content
-    mockedFs.readFileSync.mockImplementation((path: fs.PathOrFileDescriptor, options?: fs.EncodingOption) => {
+    mockedFs.readFileSync.mockImplementation((path: fs.PathOrFileDescriptor) => {
       const pathStr = path.toString()
       if (pathStr.includes('.sync-secret-key')) {
         return this.keyFileContent
@@ -70,6 +71,7 @@ class MockConfigDirectoryService {
 describe('CryptoService', () => {
   let cryptoService: CryptoService
   let mockConfigService: MockConfigDirectoryService
+  let mockLogger: jest.Mocked<LoggerService>
   const originalEnv = process.env
 
   beforeEach(() => {
@@ -83,6 +85,18 @@ describe('CryptoService', () => {
     mockedFs.readdirSync.mockReturnValue([])
     mockedFs.readFileSync.mockReturnValue('')
     mockedFs.writeFileSync.mockImplementation(() => {})
+    
+    // Create mock logger
+    mockLogger = {
+      info: jest.fn(),
+      warn: jest.fn(),
+      error: jest.fn(),
+      debug: jest.fn(),
+      writeLog: jest.fn(),
+      setFastifyLogger: jest.fn(),
+      createRunLogger: jest.fn(),
+      readRunLogs: jest.fn()
+    } as any
     
     // Create mock service
     mockConfigService = new MockConfigDirectoryService()
@@ -101,7 +115,7 @@ describe('CryptoService', () => {
       // Set up mock to generate a new key
       mockConfigService.setKeyFileExists(false)
       const getWrittenKey = mockConfigService.captureWrittenKey()
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
       // Verify a key was generated
       expect(getWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
     })
@@ -146,7 +160,7 @@ describe('CryptoService', () => {
   describe('decrypt error handling', () => {
     beforeEach(() => {
       mockConfigService.setKeyFileExists(false)
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
     })
     it('should throw error for invalid format', () => {
       expect(() => cryptoService.decrypt('invalid-format')).toThrow('Failed to decrypt data')
@@ -165,7 +179,7 @@ describe('CryptoService', () => {
     it('should create a key file if none exists', () => {
       mockConfigService.setKeyFileExists(false)
       const getWrittenKey = mockConfigService.captureWrittenKey()
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
       
       expect(getWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
       // After creating the CryptoService, the key file should exist
@@ -177,7 +191,7 @@ describe('CryptoService', () => {
       mockConfigService.setKeyFileExists(true)
       mockConfigService.setKeyFileContent(testKey)
       
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
       
       // Should not write a new key
       expect(mockedFs.writeFileSync).not.toHaveBeenCalled()
@@ -188,7 +202,7 @@ describe('CryptoService', () => {
       
       mockConfigService.setKeyFileExists(false)
       const getWrittenKey = mockConfigService.captureWrittenKey()
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
       
       // Should not write a key file when using env variable
       expect(getWrittenKey()).toBe('')
@@ -196,7 +210,7 @@ describe('CryptoService', () => {
 
     it('should rotate key successfully', () => {
       mockConfigService.setKeyFileExists(false)
-      cryptoService = new CryptoService(mockConfigService as any)
+      cryptoService = new CryptoService(mockConfigService as any, mockLogger)
       
       const testText = 'test-data'
       const encrypted = cryptoService.encrypt(testText)

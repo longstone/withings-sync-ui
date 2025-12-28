@@ -1,7 +1,7 @@
 import {existsSync, unlinkSync, writeFileSync} from 'fs'
 import {join} from 'path'
 import {CryptoService} from '@/services/CryptoService'
-import {logger} from '@/utils/logger'
+import {LoggerService} from '@/services/LoggerService'
 import {PrismaClient, Settings} from "@/db/prisma-client-generated/client";
 import {ConfigDirectoryService} from "@/services/ConfigDirectoryService";
 
@@ -12,12 +12,15 @@ export interface WithingsAppConfig {
 }
 
 export class WithingsAppConfigService {
+    private logger: LoggerService
 
     constructor(
         private prisma: PrismaClient,
         private configDirectoryService: ConfigDirectoryService,
-        private cryptoService: CryptoService
+        private cryptoService: CryptoService,
+        logger: LoggerService
     ) {
+        this.logger = logger
     }
 
     /**
@@ -40,7 +43,7 @@ export class WithingsAppConfigService {
         // Write config files to all profile directories
         await this.writeWithingsAppFiles(clientId, consumerSecret, callbackUrl)
 
-        logger.info('Withings app configuration updated and written to all profiles')
+        this.logger.info('Withings app configuration updated and written to all profiles')
     }
 
     /**
@@ -60,7 +63,7 @@ export class WithingsAppConfigService {
         // Delete config files from all profile directories
         await this.deleteWithingsAppFiles()
 
-        logger.info('Withings app configuration removed from all profiles')
+        this.logger.info('Withings app configuration removed from all profiles')
     }
 
     /**
@@ -84,7 +87,7 @@ export class WithingsAppConfigService {
         for (const profileDir of profileDirs) {
             const configPath = join(profileDir, 'withings_app.json')
             writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600})
-            logger.debug(`Wrote withings_app.json to ${profileDir}`)
+            this.logger.debug(`Wrote withings_app.json to ${profileDir}`)
         }
     }
 
@@ -98,7 +101,7 @@ export class WithingsAppConfigService {
             const configPath = join(profileDir, 'withings_app.json')
             if (existsSync(configPath)) {
                 unlinkSync(configPath)
-                logger.debug(`Deleted withings_app.json from ${profileDir}`)
+                this.logger.debug(`Deleted withings_app.json from ${profileDir}`)
             }
         }
     }
@@ -135,7 +138,7 @@ export class WithingsAppConfigService {
         const configPath = join(profileDir, 'withings_app.json')
         writeFileSync(configPath, JSON.stringify(config, null, 2), {mode: 0o600})
 
-        logger.debug(`Synced withings_app.json to profile ${profileId}`)
+        this.logger.debug(`Synced withings_app.json to profile ${profileId}`)
     }
 
     private getConsumerSecret(settings: Settings): string {
@@ -146,7 +149,7 @@ export class WithingsAppConfigService {
         try {
             return this.cryptoService.decrypt(secret)
         } catch (error) {
-            logger.error(`Failed to decrypt consumerSecret: ${error}`)
+            this.logger.error(`Failed to decrypt consumerSecret: ${error}`)
             throw new Error(`Failed to decrypt Withings consumer secret: ${error}`)
         }
     }

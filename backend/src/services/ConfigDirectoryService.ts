@@ -1,16 +1,15 @@
 import {existsSync, mkdirSync, readdirSync} from 'fs'
 import {join} from 'path'
 import {Dirent} from "node:fs";
+import {LoggerService} from '@/services/LoggerService'
 
 
 export class ConfigDirectoryService {
-    private readonly dataDir: string
     private readonly configDir: string
 
-    constructor() {
-        this.dataDir = process.env.DATA_DIR || '/app/data/'
+    constructor(private logger: LoggerService, private dataDir:string) {
         this.configDir = join(this.dataDir, 'withings-config')
-        console.log('Config Directory being used:', this.configDir)
+        this.logger.info('Config Directory being used: ' + this.configDir)
     }
 
     provideConfigDirectory() {
@@ -38,7 +37,7 @@ export class ConfigDirectoryService {
         return existsSync(this.getConfigDirectory())
     }
 
-    getConfigDirectoryContents():Dirent[] {
+    getConfigDirectoryContents(): Dirent[] {
         return readdirSync(this.configDir, {withFileTypes: true})
     }
 
@@ -46,9 +45,9 @@ export class ConfigDirectoryService {
         if (!this.isConfigDirectoryExisting()) {
             return []
         }
-        
-       return this.getConfigDirectoryContents()
-           .filter((entry: Dirent<string>) => this.isNoTempDirectory(entry))
+
+        return this.getConfigDirectoryContents()
+            .filter((entry: Dirent<string>) => this.isNoTempDirectory(entry))
             .map((entry: Dirent<string>) => join(this.configDir, entry.name));
 
     }
