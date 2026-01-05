@@ -105,7 +105,7 @@ export default async function profilesRoutes(fastify: FastifyInstance) {
                 }
             } else if (!profile.enabled) {
                 // Unschedule if disabled
-                schedulerService.unscheduleProfile(id, true)
+                schedulerService.unscheduleProfile(id)
                 fastify.log.info(`Unscheduled disabled profile ${id}`)
             }
 
@@ -151,7 +151,7 @@ export default async function profilesRoutes(fastify: FastifyInstance) {
                     }
                 } else {
                     // Unschedule if disabled or no cron
-                    schedulerService.unscheduleProfile(id, true)
+                    schedulerService.unscheduleProfile(id)
                     fastify.log.info(`Unscheduled profile ${id}`)
                 }
 

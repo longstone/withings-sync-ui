@@ -18,8 +18,6 @@ export interface UpdateRunData {
 }
 
 export class RunService {
-    // Track running profiles to prevent concurrent runs
-    private runningProfileIds: Set<string> = new Set()
     private static readonly RUN_TIMEOUT_MS = 10 * 60 * 1000 // 10 minutes timeout
     private runLogLevels: Map<string, 'debug' | 'info' | 'warn' | 'error'> = new Map()
 
@@ -149,50 +147,53 @@ export class RunService {
                 throw new Error(`Run ${id} not found`)
             }
 
-            // Check if profile is already running
-            if (this.runningProfileIds.has(existingRun.syncProfileId)) {
+            const isRunning = await this.isProfileRunning(existingRun.syncProfileId)
+            if (isRunning) {
                 throw new Error(`Profile ${existingRun.syncProfileId} is already running`)
             }
 
-            // Mark profile as running
-            this.runningProfileIds.add(existingRun.syncProfileId)
-
-            // Update run status
-            const run = await prisma.syncRun.update({
-                where: {id},
-                data: {
-                    status: RunStatus.RUNNING,
-                    startedAt: new Date()
-                },
-                include: {
-                    syncProfile: {
-                        include: {
-                            ownerUser: true
+            try {
+                // Update run status
+                const run = await prisma.syncRun.update({
+                    where: {id},
+                    data: {
+                        status: RunStatus.RUNNING,
+                        startedAt: new Date()
+                    },
+                    include: {
+                        syncProfile: {
+                            include: {
+                                ownerUser: true
+                            }
                         }
                     }
-                }
-            })
+                })
+                this.logger.info(`Started run ${id}`, id)
+                return run
+            } catch (updateError) {
+                const isUniqueConstraintError =
+                    typeof updateError === 'object' &&
+                    updateError !== null &&
+                    'code' in updateError &&
+                    (updateError as {code?: string}).code === 'P2002'
 
-            this.logger.info(`Started run ${id}`, id)
-            return run
+                if (isUniqueConstraintError) {
+                    throw new Error(`Profile ${existingRun.syncProfileId} is already running`)
+                }
+
+                throw updateError
+            }
+
+
         } catch (error) {
             this.logger.error(`Failed to start run ${id}`)
             throw error
         }
     }
 
-    // Complete a run (set status to SUCCESS/FAILED and release profile lock)
+    // Complete a run (set status to SUCCESS/FAILED)
     async completeRun(id: string, status: RunStatus, exitCode?: number, errorMessage?: string) {
         try {
-            // First get the run to get the profile ID
-            const existingRun = await this.getRunById(id)
-            if (!existingRun) {
-                throw new Error(`Run ${id} not found`)
-            }
-
-            // Release profile lock
-            this.runningProfileIds.delete(existingRun.syncProfileId)
-
             // Update run status
             const run = await prisma.syncRun.update({
                 where: {id},
@@ -232,11 +233,6 @@ export class RunService {
 
     // Check if a profile is currently running
     async isProfileRunning(syncProfileId: string): Promise<boolean> {
-        // First check in-memory set for immediate feedback
-        if (this.runningProfileIds.has(syncProfileId)) {
-            return true
-        }
-
         // First cleanup any stale runs
         await this.cleanupStaleRuns()
 
@@ -269,8 +265,17 @@ export class RunService {
     }
 
     // Get all currently running profile IDs
-    getRunningProfileIds(): string[] {
-        return Array.from(this.runningProfileIds)
+    async getRunningProfileIds(): Promise<string[]> {
+        const runningRuns = await prisma.syncRun.findMany({
+            where: {
+                status: RunStatus.RUNNING
+            },
+            select: {
+                syncProfileId: true
+            },
+            distinct: ['syncProfileId']
+        })
+        return runningRuns.map(run => run.syncProfileId)
     }
 
     // Get run logs
@@ -442,9 +447,6 @@ export class RunService {
                     errorMessage: 'Run cancelled by user'
                 }
             })
-
-            // Remove from running profiles set
-            this.runningProfileIds.delete(run.syncProfileId)
 
             this.logger.info(`Run ${id} cancelled by user`)
             return updatedRun

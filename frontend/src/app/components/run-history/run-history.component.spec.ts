@@ -5,6 +5,7 @@ import {vi} from 'vitest'
 import {RunHistoryComponent} from './run-history.component'
 import {RunService} from '../../services/run.service'
 import {ProfileService} from '../../services/profile.service'
+import {SettingsService} from '../../services/settings.service'
 import {RunMode, RunStatus, SyncRun} from '../../models/run.model'
 import {SyncProfile} from '../../models/profile.model'
 
@@ -13,6 +14,7 @@ describe('RunHistoryComponent', () => {
   let fixture: ComponentFixture<RunHistoryComponent>
   let mockRunService: any
   let mockProfileService: any
+  let mockSettingsService: SettingsService
   let paramMapSubject: BehaviorSubject<any>
 
   const mockProfile: SyncProfile = {
@@ -68,11 +70,22 @@ describe('RunHistoryComponent', () => {
       getProfileById: vi.fn().mockReturnValue(of(mockProfile))
     }
 
+    mockSettingsService = {
+      settings: {
+        logLevel: 'info',
+        apiTimeout: 30,
+        timeFormat: '24h',
+        dateFormat: 'DD/MM/YYYY',
+        withingsCustomApp: false
+      }
+    } as SettingsService
+
     await TestBed.configureTestingModule({
       imports: [RunHistoryComponent],
       providers: [
         { provide: RunService, useValue: mockRunService },
         { provide: ProfileService, useValue: mockProfileService },
+        { provide: SettingsService, useValue: mockSettingsService },
         {
           provide: ActivatedRoute,
           useValue: {

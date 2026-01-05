@@ -70,6 +70,8 @@ model SyncRun {
   exitCode     Int?
   logFilePath  String?
   errorMessage String?
+
+  @@index([syncProfileId, status])
 }
 
 model Settings {

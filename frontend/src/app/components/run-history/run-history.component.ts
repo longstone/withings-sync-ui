@@ -1,7 +1,8 @@
-import {ChangeDetectorRef, Component, OnInit} from '@angular/core'
+import {ChangeDetectorRef, Component, DestroyRef, OnInit} from '@angular/core'
 import {ActivatedRoute} from '@angular/router'
 import {CommonModule} from '@angular/common'
 import {finalize} from 'rxjs/operators'
+import {takeUntilDestroyed} from '@angular/core/rxjs-interop'
 import {RunService} from '../../services/run.service'
 import {ProfileService} from '../../services/profile.service'
 import {SyncRun} from '../../models/run.model'
@@ -28,11 +29,12 @@ export class RunHistoryComponent implements OnInit {
     private route: ActivatedRoute,
     private runService: RunService,
     private profileService: ProfileService,
-    private cdr: ChangeDetectorRef
+    private cdr: ChangeDetectorRef,
+    private destroyRef: DestroyRef
   ) {}
 
   ngOnInit(): void {
-    this.route.paramMap.subscribe(params => {
+    this.route.paramMap.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(params => {
       const profileId = params.get('profileId')
       if (profileId) {
         this.selectedRun = null
