@@ -246,17 +246,56 @@ describe('SchedulerService', () => {
             expect(schedulerService['resolvedCronExpressions'].get(profileId))
                 .toBe('15 3 * * *')
         })
+
+        it('should reuse cached resolved cron expression on subsequent schedules', async () => {
+            const randomCron = '? ? * * *'
+            schedulerService['resolvedCronExpressions'].set(profileId, '30 14 * * *')
+            
+            await schedulerService.scheduleProfile(profileId, randomCron)
+            
+            expect(mockSchedule.scheduleJob).toHaveBeenCalledWith(
+                '30 14 * * *',
+                expect.any(Function)
+            )
+            expect(schedulerService['resolvedCronExpressions'].get(profileId))
+                .toBe('30 14 * * *')
+        })
+
+        it('should maintain consistent schedule across reconciliation loops', async () => {
+            const randomCron = '? ? * * *'
+            
+            await schedulerService.scheduleProfile(profileId, randomCron)
+            const firstResolved = schedulerService['resolvedCronExpressions'].get(profileId)
+            
+            schedulerService.unscheduleProfile(profileId)
+            await schedulerService.scheduleProfile(profileId, randomCron)
+            const secondResolved = schedulerService['resolvedCronExpressions'].get(profileId)
+            
+            expect(firstResolved).toBe(secondResolved)
+            expect(firstResolved).toBe('15 3 * * *')
+        })
     })
 
     describe('unscheduleProfile', () => {
         const profileId = 'profile123'
         const mockJob = { cancel: jest.fn() } as any
 
-        it('should unschedule a profile', () => {
+        it('should unschedule a profile and preserve resolved expression by default', () => {
             schedulerService['scheduledJobs'].set(profileId, mockJob)
             schedulerService['resolvedCronExpressions'].set(profileId, '0 0 * * *')
             
             schedulerService.unscheduleProfile(profileId)
+            
+            expect(mockJob.cancel).toHaveBeenCalled()
+            expect(schedulerService['scheduledJobs'].has(profileId)).toBe(false)
+            expect(schedulerService['resolvedCronExpressions'].has(profileId)).toBe(true)
+        })
+
+        it('should clear resolved expression when explicitly requested', () => {
+            schedulerService['scheduledJobs'].set(profileId, mockJob)
+            schedulerService['resolvedCronExpressions'].set(profileId, '0 0 * * *')
+            
+            schedulerService.unscheduleProfile(profileId, true)
             
             expect(mockJob.cancel).toHaveBeenCalled()
             expect(schedulerService['scheduledJobs'].has(profileId)).toBe(false)

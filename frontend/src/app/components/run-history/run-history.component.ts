@@ -1,12 +1,12 @@
-import { Component, OnInit, ChangeDetectorRef } from '@angular/core'
-import { ActivatedRoute } from '@angular/router'
-import { CommonModule } from '@angular/common'
-import { finalize } from 'rxjs/operators'
-import { RunService } from '../../services/run.service'
-import { ProfileService } from '../../services/profile.service'
-import { SyncRun } from '../../models/run.model'
-import { SyncProfile } from '../../models/profile.model'
-import { CustomDatePipe } from '../../pipes/custom-date.pipe'
+import {ChangeDetectorRef, Component, OnInit} from '@angular/core'
+import {ActivatedRoute} from '@angular/router'
+import {CommonModule} from '@angular/common'
+import {finalize} from 'rxjs/operators'
+import {RunService} from '../../services/run.service'
+import {ProfileService} from '../../services/profile.service'
+import {SyncRun} from '../../models/run.model'
+import {SyncProfile} from '../../models/profile.model'
+import {CustomDatePipe} from '../../pipes/custom-date.pipe'
 
 @Component({
   selector: 'app-run-history',
@@ -32,11 +32,15 @@ export class RunHistoryComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    const profileId = this.route.snapshot.paramMap.get('profileId')
-    if (profileId) {
-      this.loadProfile(profileId)
-      this.loadRuns(profileId)
-    }
+    this.route.paramMap.subscribe(params => {
+      const profileId = params.get('profileId')
+      if (profileId) {
+        this.selectedRun = null
+        this.logContent = ''
+        this.loadProfile(profileId)
+        this.loadRuns(profileId)
+      }
+    })
   }
 
   loadProfile(profileId: string): void {
@@ -116,11 +120,11 @@ export class RunHistoryComponent implements OnInit {
 
   formatDuration(run: SyncRun): string {
     if (!run.finishedAt) return 'N/A'
-    
+
     const start = new Date(run.startedAt)
     const end = new Date(run.finishedAt)
     const duration = end.getTime() - start.getTime()
-    
+
     if (duration < 1000) return `${duration}ms`
     if (duration < 60000) return `${Math.round(duration / 1000)}s`
     return `${Math.round(duration / 60000)}m`
@@ -128,7 +132,7 @@ export class RunHistoryComponent implements OnInit {
 
   copyLogToClipboard(): void {
     if (!this.logContent) return
-    
+
     // Create a header with run information
     const header = `Run Log - ${this.selectedRun?.startedAt}\n` +
                   `Profile: ${this.profile?.name}\n` +
@@ -136,9 +140,9 @@ export class RunHistoryComponent implements OnInit {
                   `Status: ${this.selectedRun?.status}\n` +
                   `Exit Code: ${this.selectedRun?.exitCode || 'N/A'}\n` +
                   `${'='.repeat(50)}\n\n`
-    
+
     const fullLog = header + this.logContent
-    
+
     navigator.clipboard.writeText(fullLog).then(
       () => {
         // Could add a toast notification here

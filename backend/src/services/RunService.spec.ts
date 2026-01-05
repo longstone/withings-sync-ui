@@ -392,7 +392,17 @@ describe('RunService', () => {
     })
 
     describe('isProfileRunning', () => {
-        it('should return true if profile is running', async () => {
+        it('should return true if profile is in runningProfileIds set', async () => {
+            const profileId = 'profile123'
+            runService['runningProfileIds'].add(profileId)
+
+            const result = await runService.isProfileRunning(profileId)
+
+            expect(result).toBe(true)
+            expect(mockPrisma.syncRun.findFirst).not.toHaveBeenCalled()
+        })
+
+        it('should return true if profile is running in database', async () => {
             const profileId = 'profile123'
             ;(mockPrisma.syncRun.findFirst as jest.Mock).mockResolvedValue({id: 'run1', status: RunStatus.RUNNING})
             jest.spyOn(runService, 'cleanupStaleRuns').mockResolvedValue(0)
@@ -410,6 +420,18 @@ describe('RunService', () => {
             const result = await runService.isProfileRunning(profileId)
 
             expect(result).toBe(false)
+        })
+
+        it('should check in-memory set before database to prevent race conditions', async () => {
+            const profileId = 'profile123'
+            runService['runningProfileIds'].add(profileId)
+            jest.spyOn(runService, 'cleanupStaleRuns').mockResolvedValue(0)
+
+            const result = await runService.isProfileRunning(profileId)
+
+            expect(result).toBe(true)
+            expect(runService.cleanupStaleRuns).not.toHaveBeenCalled()
+            expect(mockPrisma.syncRun.findFirst).not.toHaveBeenCalled()
         })
     })
 

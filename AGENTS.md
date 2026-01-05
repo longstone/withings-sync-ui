@@ -20,11 +20,19 @@
   - Replace `*ngSwitch` with `@switch` blocks
 
 ## Testing Guidelines
-- Backend tests use Jest: `npm run test-backend`. Add unit tests alongside source files or under a dedicated `__tests__` folder; cover new services, route handlers, and schedulers.
-- Frontend tests use Vitest: `npm run test-frontend`. Co-locate specs with components (`component-name.component.spec.ts`). Add minimal fixtures/mocks rather than hitting real APIs.
+- Always write at least unit tests and run them.
+- Backend tests use Jest: `npm run test:backend`. Add unit tests alongside source files or under a dedicated `__tests__` folder; cover new services, route handlers, and schedulers.
+- Frontend tests use Vitest: `npm run test:frontend`. Co-locate specs with components (`component-name.component.spec.ts`). Add minimal fixtures/mocks rather than hitting real APIs.
 - Target: cover new code paths you introduce; include regressions as explicit test cases.
+
+## Scheduler & Background Jobs
+- **Cron Expression Caching**: Random placeholders (`?`) in cron expressions are resolved once and cached. The resolved expression persists across reconciliation loops (every 5 minutes) to maintain consistent scheduling.
+- **Duplicate Run Prevention**: `RunService` maintains an in-memory `runningProfileIds` Set checked before database queries to prevent race conditions where multiple scheduled triggers fire simultaneously.
+- **Reconciliation Loop**: Scheduler refreshes all schedules from database every 5 minutes. During refresh, resolved cron expressions are preserved to avoid schedule drift.
+- **Unscheduling Behavior**: `unscheduleProfile(profileId, clearResolvedExpression)` preserves cached cron by default. Pass `true` to clear cache when permanently disabling/deleting profiles.
 
 ## Commit & Pull Request Guidelines
 - Prefer concise, imperative commit subjects (e.g., `Add scheduler cleanup guard`). If touching schema, mention it (e.g., `Add onboarding_session table`).
 - PRs should describe intent, key changes, and how to verify (commands run, screenshots for UI changes). Link related issues if applicable.
 - Keep diffs small and focused; include database migration notes and env variable changes in the PR description.
+- branch naming should follow the pattern fix/* or feat/*

@@ -1,4 +1,4 @@
-import { FastifyInstance, FastifyRequest, FastifyReply } from 'fastify'
+import {FastifyInstance, FastifyReply, FastifyRequest} from 'fastify'
 
 interface ScheduleProfileBody {
   profileId: string
@@ -100,7 +100,7 @@ export default async function schedulerRoutes(fastify: FastifyInstance) {
     try {
       const { profileId } = request.params
       
-      schedulerService.unscheduleProfile(profileId)
+      schedulerService.unscheduleProfile(profileId, true)
       
       return {
         success: true,

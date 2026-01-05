@@ -232,6 +232,11 @@ export class RunService {
 
     // Check if a profile is currently running
     async isProfileRunning(syncProfileId: string): Promise<boolean> {
+        // First check in-memory set for immediate feedback
+        if (this.runningProfileIds.has(syncProfileId)) {
+            return true
+        }
+
         // First cleanup any stale runs
         await this.cleanupStaleRuns()
 
