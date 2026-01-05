@@ -1,23 +1,38 @@
-import { ComponentFixture, TestBed } from '@angular/core/testing';
-
-import { Config } from './config';
+import {ComponentFixture, TestBed} from '@angular/core/testing'
+import {vi} from 'vitest'
+import {SettingsService} from '../../services/settings.service'
+import {Config} from './config'
 
 describe('Config', () => {
-  let component: Config;
-  let fixture: ComponentFixture<Config>;
+  let component: Config
+  let fixture: ComponentFixture<Config>
+  let mockSettingsService: SettingsService
 
   beforeEach(async () => {
-    await TestBed.configureTestingModule({
-      imports: [Config]
-    })
-    .compileComponents();
+    mockSettingsService = {
+      settings: {
+        logLevel: 'info',
+        apiTimeout: 30,
+        timeFormat: '24h',
+        dateFormat: 'DD/MM/YYYY',
+        withingsCustomApp: false
+      },
+      updateSettings: vi.fn(),
+      resetSettings: vi.fn()
+    } as unknown as SettingsService
 
-    fixture = TestBed.createComponent(Config);
-    component = fixture.componentInstance;
-    await fixture.whenStable();
-  });
+    await TestBed.configureTestingModule({
+      imports: [Config],
+      providers: [{provide: SettingsService, useValue: mockSettingsService}]
+    })
+    .compileComponents()
+
+    fixture = TestBed.createComponent(Config)
+    component = fixture.componentInstance
+    await fixture.whenStable()
+  })
 
   it('should create', () => {
-    expect(component).toBeTruthy();
-  });
-});
+    expect(component).toBeTruthy()
+  })
+})

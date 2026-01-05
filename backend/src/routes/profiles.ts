@@ -121,7 +121,7 @@ export default async function profilesRoutes(fastify: FastifyInstance) {
     fastify.delete('/profiles/:id', async (request, reply) => {
         try {
             const {id} = request.params as { id: string }
-            schedulerService.unscheduleProfile(id)
+            schedulerService.unscheduleProfile(id, true)
             await profileService.deleteProfile(id)
             return {success: true}
         } catch (error) {
@@ -177,7 +177,7 @@ export default async function profilesRoutes(fastify: FastifyInstance) {
             }
 
             // Unschedule the profile to prevent failed runs
-            await schedulerService.unscheduleProfile(id)
+            await schedulerService.unscheduleProfile(id, true)
 
             // Delete session files
             await profileService.resetProfileSessions(id)

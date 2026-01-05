@@ -19,7 +19,13 @@ export interface SchedulerStatus {
 
 export class SchedulerService {
   private scheduledJobs: Map<string, schedule.Job> = new Map()
-  private resolvedCronExpressions: Map<string, string> = new Map()
+  private resolvedCronExpressions: Map<
+    string,
+    {
+      originalCron: string
+      resolvedCron: string
+    }
+  > = new Map()
   private isRunning: boolean = false
   private reconciliationInterval: NodeJS.Timeout | null = null
   private cleanupJob: schedule.Job | null = null
@@ -102,15 +108,25 @@ export class SchedulerService {
       // Remove existing job if any
       this.unscheduleProfile(profileId)
 
-      // Resolve any random placeholders
-      const resolvedCronExpression = this.resolveRandomPlaceholders(cronExpression)
-      
-      // Store the resolved expression
-      this.resolvedCronExpressions.set(profileId, resolvedCronExpression)
-      
-      // Log the resolved cron for debugging
-      if (cronExpression !== resolvedCronExpression) {
-        this.logger.info(`Resolved random cron: ${cronExpression} -> ${resolvedCronExpression}`)
+      // Check if we already have a resolved expression for this profile
+      // If so, reuse it to maintain consistent scheduling across reconciliation loops
+      const cachedCron = this.resolvedCronExpressions.get(profileId)
+      let resolvedCronExpression = cachedCron?.resolvedCron
+
+      if (!resolvedCronExpression || cachedCron?.originalCron !== cronExpression) {
+        // First time scheduling: resolve any random placeholders
+        resolvedCronExpression = this.resolveRandomPlaceholders(cronExpression)
+        
+        // Store the resolved expression
+        this.resolvedCronExpressions.set(profileId, {
+          originalCron: cronExpression,
+          resolvedCron: resolvedCronExpression
+        })
+        
+        // Log the resolved cron for debugging
+        if (cronExpression !== resolvedCronExpression) {
+          this.logger.info(`Resolved random cron: ${cronExpression} -> ${resolvedCronExpression}`)
+        }
       }
 
       // Create new scheduled job
@@ -132,12 +148,14 @@ export class SchedulerService {
   }
 
   // Unschedule a specific profile
-  unscheduleProfile(profileId: string): void {
+  unscheduleProfile(profileId: string, clearResolvedExpression: boolean = false): void {
     const job = this.scheduledJobs.get(profileId)
     if (job) {
       job.cancel()
       this.scheduledJobs.delete(profileId)
-      this.resolvedCronExpressions.delete(profileId)
+      if (clearResolvedExpression) {
+        this.resolvedCronExpressions.delete(profileId)
+      }
       this.logger.info(`Unscheduled profile ${profileId}`)
     }
   }
@@ -145,13 +163,13 @@ export class SchedulerService {
   // Get schedule info for a specific profile
   getProfileScheduleInfo(profileId: string): { originalCron: string | null, resolvedCron: string | null, nextRun: Date | null } {
     const job = this.scheduledJobs.get(profileId)
-    const resolvedCron = this.resolvedCronExpressions.get(profileId) || null
+    const cachedCron = this.resolvedCronExpressions.get(profileId)
     
     // We need to get the original cron from the profile service
     // For now, return what we have
     return {
-      originalCron: null, // Will be filled by the route handler
-      resolvedCron,
+      originalCron: cachedCron?.originalCron ?? null, // Will be filled by the route handler
+      resolvedCron: cachedCron?.resolvedCron ?? null,
       nextRun: job?.nextInvocation() || null
     }
   }
