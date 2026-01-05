@@ -243,13 +243,18 @@ describe('SchedulerService', () => {
                 '15 3 * * *',
                 expect.any(Function)
             )
-            expect(schedulerService['resolvedCronExpressions'].get(profileId))
-                .toBe('15 3 * * *')
+            expect(schedulerService['resolvedCronExpressions'].get(profileId)).toEqual({
+                originalCron: randomCron,
+                resolvedCron: '15 3 * * *'
+            })
         })
 
         it('should reuse cached resolved cron expression on subsequent schedules', async () => {
             const randomCron = '? ? * * *'
-            schedulerService['resolvedCronExpressions'].set(profileId, '30 14 * * *')
+            schedulerService['resolvedCronExpressions'].set(profileId, {
+                originalCron: randomCron,
+                resolvedCron: '30 14 * * *'
+            })
             
             await schedulerService.scheduleProfile(profileId, randomCron)
             
@@ -257,8 +262,10 @@ describe('SchedulerService', () => {
                 '30 14 * * *',
                 expect.any(Function)
             )
-            expect(schedulerService['resolvedCronExpressions'].get(profileId))
-                .toBe('30 14 * * *')
+            expect(schedulerService['resolvedCronExpressions'].get(profileId)).toEqual({
+                originalCron: randomCron,
+                resolvedCron: '30 14 * * *'
+            })
         })
 
         it('should maintain consistent schedule across reconciliation loops', async () => {
@@ -271,8 +278,29 @@ describe('SchedulerService', () => {
             await schedulerService.scheduleProfile(profileId, randomCron)
             const secondResolved = schedulerService['resolvedCronExpressions'].get(profileId)
             
-            expect(firstResolved).toBe(secondResolved)
-            expect(firstResolved).toBe('15 3 * * *')
+            expect(firstResolved).toEqual(secondResolved)
+            expect(firstResolved).toEqual({
+                originalCron: randomCron,
+                resolvedCron: '15 3 * * *'
+            })
+        })
+
+        it('should recompute cached cron when expression changes', async () => {
+            schedulerService['resolvedCronExpressions'].set(profileId, {
+                originalCron: '? ? * * *',
+                resolvedCron: '30 14 * * *'
+            })
+
+            await schedulerService.scheduleProfile(profileId, '0 6 * * *')
+
+            expect(mockSchedule.scheduleJob).toHaveBeenCalledWith(
+                '0 6 * * *',
+                expect.any(Function)
+            )
+            expect(schedulerService['resolvedCronExpressions'].get(profileId)).toEqual({
+                originalCron: '0 6 * * *',
+                resolvedCron: '0 6 * * *'
+            })
         })
     })
 
@@ -282,7 +310,10 @@ describe('SchedulerService', () => {
 
         it('should unschedule a profile and preserve resolved expression by default', () => {
             schedulerService['scheduledJobs'].set(profileId, mockJob)
-            schedulerService['resolvedCronExpressions'].set(profileId, '0 0 * * *')
+            schedulerService['resolvedCronExpressions'].set(profileId, {
+                originalCron: '0 0 * * *',
+                resolvedCron: '0 0 * * *'
+            })
             
             schedulerService.unscheduleProfile(profileId)
             
@@ -293,7 +324,10 @@ describe('SchedulerService', () => {
 
         it('should clear resolved expression when explicitly requested', () => {
             schedulerService['scheduledJobs'].set(profileId, mockJob)
-            schedulerService['resolvedCronExpressions'].set(profileId, '0 0 * * *')
+            schedulerService['resolvedCronExpressions'].set(profileId, {
+                originalCron: '0 0 * * *',
+                resolvedCron: '0 0 * * *'
+            })
             
             schedulerService.unscheduleProfile(profileId, true)
             
@@ -317,12 +351,15 @@ describe('SchedulerService', () => {
 
         it('should return schedule info for profile', () => {
             schedulerService['scheduledJobs'].set(profileId, mockJob)
-            schedulerService['resolvedCronExpressions'].set(profileId, '0 0 * * *')
+            schedulerService['resolvedCronExpressions'].set(profileId, {
+                originalCron: '0 0 * * *',
+                resolvedCron: '0 0 * * *'
+            })
             
             const result = schedulerService.getProfileScheduleInfo(profileId)
             
             expect(result).toEqual({
-                originalCron: null,
+                originalCron: '0 0 * * *',
                 resolvedCron: '0 0 * * *',
                 nextRun
             })
