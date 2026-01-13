@@ -22,6 +22,9 @@ updates:
       prisma-dependencies:
         patterns:
           - "@prisma/*"
+      fastify-dependencies:
+        patterns:
+          - "@fastify/*"
 
   # Frontend dependencies
   - package-ecosystem: "npm"
