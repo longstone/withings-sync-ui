@@ -18,6 +18,10 @@ updates:
     schedule:
       interval: "weekly"
     open-pull-requests-limit: 10
+    groups:
+      prisma-dependencies:
+        patterns:
+          - "@prisma/*"
 
   # Frontend dependencies
   - package-ecosystem: "npm"
