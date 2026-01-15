@@ -13,8 +13,8 @@
     "prisma:studio": "DATABASE_URL=${DATABASE_URL:-file:./data/db/app.db} prisma studio"
   },
   "dependencies": {
-    "@fastify/cors": "^9.0.1",
-    "@fastify/websocket": "^10.0.1",
+    "@fastify/cors": "^11.2.0",
+    "@fastify/websocket": "^11.2.0",
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/client": "7.2.0",
     "@types/node-schedule": "^2.1.8",
