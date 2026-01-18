@@ -18,7 +18,7 @@
     "@prisma/adapter-better-sqlite3": "^7.2.0",
     "@prisma/client": "7.2.0",
     "@types/node-schedule": "^2.1.8",
-    "fastify": "^5.6.2",
+    "fastify": "^5.7.1",
     "node-cron": "^4.2.1",
     "node-schedule": "^2.1.1"
   },
