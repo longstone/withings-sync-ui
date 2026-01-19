@@ -75,6 +75,7 @@ COPY --from=backend-deps /app/backend/node_modules /app/backend/node_modules
 # Copy built backend + prisma artifacts
 COPY --from=backend-build /app/backend/dist /app/backend/dist
 COPY --from=backend-build /app/backend/prisma /app/backend/prisma
+COPY --from=backend-build /app/backend/prisma.config.ts /app/backend/prisma.config.ts
 COPY --from=backend-build /app/backend/node_modules/@prisma /app/backend/node_modules/@prisma
 
 # Frontend assets

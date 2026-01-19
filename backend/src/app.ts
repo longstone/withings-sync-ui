@@ -74,8 +74,10 @@ const createPlainLogger = () => {
     }
 }
 
+const plainLogger = createPlainLogger()
+
 const server = Fastify({
-    logger: createPlainLogger()
+    logger: false
 })
 
 // Initialize services using manual dependency injection
@@ -86,8 +88,8 @@ services.getLogger().info('DATABASE_URL being used: ' + (process.env.DATABASE_UR
 
 server.decorate('services', services);
 
-// Initialize the custom logger with the fastify logger instance
-services.initializeLoggerWithFastify(server.log)
+// Initialize the custom logger with the plain logger instance
+services.initializeLoggerWithFastify(plainLogger)
 
 // Register plugins
 server.register(cors)
@@ -175,29 +177,29 @@ const start = async () => {
     try {
         // Test database connection on startup
         await services.getPrisma().$connect()
-        server.log.info('Database connected successfully')
+        plainLogger.info('Database connected successfully')
 
         // Initialize scheduler service
         await services.getSchedulerService().initialize()
-        server.log.info('Scheduler service initialized')
+        plainLogger.info('Scheduler service initialized')
 
 
         // Register graceful shutdown handlers
         const gracefulShutdown = async (signal: string) => {
-            server.log.info(`Received ${signal}, starting graceful shutdown`)
+            plainLogger.info(`Received ${signal}, starting graceful shutdown`)
 
             try {
                 // Shutdown scheduler first
                 await services.getSchedulerService().shutdown()
-                server.log.info('Scheduler service shutdown')
+                plainLogger.info('Scheduler service shutdown')
 
                 // Close database connection
                 await services.getPrisma().$disconnect()
-                server.log.info('Database disconnected')
+                plainLogger.info('Database disconnected')
 
                 process.exit(0)
             } catch (error) {
-                server.log.error({err: error}, 'Error during graceful shutdown')
+                plainLogger.error('Error during graceful shutdown: ' + (error instanceof Error ? error.message : String(error)))
                 process.exit(1)
             }
         }
@@ -208,8 +210,9 @@ const start = async () => {
         const port = parseInt(process.env.PORT || '3333')
         const host = process.env.HOST || '0.0.0.0'
         await server.listen({port, host})
+        plainLogger.info(`Server listening on ${host}:${port}`)
     } catch (err) {
-        server.log.error({err}, 'Failed to start server')
+        plainLogger.error('Failed to start server: ' + (err instanceof Error ? err.message : String(err)))
         process.exit(1)
     }
 }
