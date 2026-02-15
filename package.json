@@ -10,7 +10,7 @@
     "@playwright/test": "^1.58.1",
     "@types/node": "^25.0.10",
     "concurrently": "^9.2.1",
-    "prisma": "7.3.0"
+    "prisma": "7.4.0"
   },
   "dependencies": {
     "@prisma/client": "7.3.0"
