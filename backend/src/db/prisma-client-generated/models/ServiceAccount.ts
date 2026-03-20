@@ -1332,6 +1332,11 @@ export type ServiceAccountFindManyArgs<ExtArgs extends runtime.Types.Extensions.
    * Skip the first `n` ServiceAccounts.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of ServiceAccounts.
+   */
   distinct?: Prisma.ServiceAccountScalarFieldEnum | Prisma.ServiceAccountScalarFieldEnum[]
 }
 

@@ -1317,6 +1317,11 @@ export type SyncRunFindManyArgs<ExtArgs extends runtime.Types.Extensions.Interna
    * Skip the first `n` SyncRuns.
    */
   skip?: number
+  /**
+   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/distinct Distinct Docs}
+   * 
+   * Filter by unique combinations of SyncRuns.
+   */
   distinct?: Prisma.SyncRunScalarFieldEnum | Prisma.SyncRunScalarFieldEnum[]
 }
 
