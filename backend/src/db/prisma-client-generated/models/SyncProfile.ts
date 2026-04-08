@@ -200,7 +200,7 @@ export type SyncProfileGroupByOutputType = {
   _max: SyncProfileMaxAggregateOutputType | null
 }
 
-type GetSyncProfileGroupByPayload<T extends SyncProfileGroupByArgs> = Prisma.PrismaPromise<
+export type GetSyncProfileGroupByPayload<T extends SyncProfileGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<SyncProfileGroupByOutputType, T['by']> &
       {

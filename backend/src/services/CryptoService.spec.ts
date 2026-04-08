@@ -210,22 +210,28 @@ describe('CryptoService', () => {
 
     it('should rotate key successfully', () => {
       mockConfigService.setKeyFileExists(false)
+      const getFirstWrittenKey = mockConfigService.captureWrittenKey()
       cryptoService = new CryptoService(mockConfigService as any, mockLogger)
+      
+      const firstKey = getFirstWrittenKey()
+      expect(firstKey).toMatch(/^[a-f0-9]{64}$/)
       
       const testText = 'test-data'
       const encrypted = cryptoService.encrypt(testText)
       
-      // Capture the new key that will be written
+      // Capture the new key that will be written during rotation
       const getNewWrittenKey = mockConfigService.captureWrittenKey()
       
       // Rotate key
       cryptoService.rotateKey()
       
-      // Verify a new key was written
-      expect(getNewWrittenKey()).toMatch(/^[a-f0-9]{64}$/)
+      const newKey = getNewWrittenKey()
+      // Verify a new key was written and it's different from the first
+      expect(newKey).toMatch(/^[a-f0-9]{64}$/)
+      expect(newKey).not.toBe(firstKey)
       
-      // Old encrypted data should fail to decrypt
-      expect(() => cryptoService.decrypt(encrypted)).toThrow()
+      // Old encrypted data should fail to decrypt with the new key
+      expect(() => cryptoService.decrypt(encrypted)).toThrow('Failed to decrypt data')
       
       // New encryption should work
       const newEncrypted = cryptoService.encrypt(testText)
