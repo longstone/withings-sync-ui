@@ -158,7 +158,7 @@ export type ServiceAccountGroupByOutputType = {
   _max: ServiceAccountMaxAggregateOutputType | null
 }
 
-type GetServiceAccountGroupByPayload<T extends ServiceAccountGroupByArgs> = Prisma.PrismaPromise<
+export type GetServiceAccountGroupByPayload<T extends ServiceAccountGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<ServiceAccountGroupByOutputType, T['by']> &
       {

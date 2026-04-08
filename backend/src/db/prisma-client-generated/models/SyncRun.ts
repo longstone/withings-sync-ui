@@ -220,7 +220,7 @@ export type SyncRunGroupByOutputType = {
   _max: SyncRunMaxAggregateOutputType | null
 }
 
-type GetSyncRunGroupByPayload<T extends SyncRunGroupByArgs> = Prisma.PrismaPromise<
+export type GetSyncRunGroupByPayload<T extends SyncRunGroupByArgs> = Prisma.PrismaPromise<
   Array<
     Prisma.PickEnumerable<SyncRunGroupByOutputType, T['by']> &
       {
