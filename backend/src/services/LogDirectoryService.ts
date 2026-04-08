@@ -76,7 +76,7 @@ export class LogDirectoryService {
                 }
             });
         } catch (error) {
-            console.error(`Failed to read run logs for ${runId}:`, error);
+            console.error('Failed to read run logs for %s:', runId, error);
             return [];
         }
     }
