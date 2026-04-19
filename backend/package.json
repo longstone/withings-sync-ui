@@ -16,7 +16,7 @@
     "@fastify/cors": "^11.2.0",
     "@fastify/websocket": "^11.2.0",
     "@prisma/adapter-better-sqlite3": "^7.6.0",
-    "@prisma/client": "7.6.0",
+    "@prisma/client": "7.7.0",
     "@types/node-schedule": "^2.1.8",
     "fastify": "^5.8.4",
     "node-cron": "^4.2.1",
