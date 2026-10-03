@@ -63,16 +63,7 @@ export class ProfileFormComponent implements OnInit {
       this.cdr.detectChanges()
     })).subscribe({
       next: (profile) => {
-        console.log('Loaded profile data:', {
-          garminUsername: profile.garminUsername,
-          garminPassword: profile.garminPassword ? '[hidden]' : null,
-          garminAccountId: profile.garminAccountId,
-          trainerroadUsername: profile.trainerroadUsername,
-          trainerroadPassword: profile.trainerroadPassword ? '[hidden]' : null,
-          trainerroadAccountId: profile.trainerroadAccountId
-        })
-        
-        this.profile = profile
+this.profile = profile
         this.scheduleEnabled = !!profile.scheduleCron
         this.garminEnabled = !!(profile.garminUsername || profile.garminPassword || profile.garminAccountId)
         this.trainerroadEnabled = !!(profile.trainerroadUsername || profile.trainerroadPassword || profile.trainerroadAccountId)
@@ -105,13 +96,6 @@ export class ProfileFormComponent implements OnInit {
       this.error = 'Profile name is required'
       return
     }
-
-    // Debug: Log the form data being sent
-    console.log('Submitting form data:', {
-      ...this.formData,
-      garminUsername: this.formData.garminUsername || '[empty]',
-      garminPassword: this.formData.garminPassword ? '[***masked***]' : '[empty]'
-    })
 
     this.saving = true
     this.error = null
