@@ -295,7 +295,8 @@ describe('ProfileService', () => {
         const createTransaction = (initialProfile: any) => {
             const tx = {
                 syncProfile: {
-                    update: jest.fn()
+                    update: jest.fn(),
+                    count: jest.fn().mockResolvedValue(0)
                 },
                 serviceAccount: {
                     findFirst: jest.fn(),
@@ -357,6 +358,32 @@ describe('ProfileService', () => {
                 include: {ownerUser: true}
             })
             expect(tx.serviceAccount.delete).toHaveBeenCalledWith({where: {id: 'garmin-id'}})
+        })
+
+        it('should keep a shared service account when another profile still references it', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: 'shared-garmin-id',
+                trainerroadAccountId: null
+            }
+            const tx = createTransaction(profile)
+            tx.syncProfile.count.mockResolvedValue(1)
+
+            await profileService.updateProfile(profileId, {
+                garminUsername: null,
+                garminPassword: null
+            })
+
+            expect(tx.syncProfile.count).toHaveBeenCalledWith({
+                where: {
+                    OR: [
+                        {garminAccountId: 'shared-garmin-id'},
+                        {trainerroadAccountId: 'shared-garmin-id'}
+                    ]
+                }
+            })
+            expect(tx.serviceAccount.delete).not.toHaveBeenCalled()
         })
 
         it('should remove TrainerRoad service account when both credentials are explicitly cleared', async () => {
