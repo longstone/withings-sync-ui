@@ -60,8 +60,6 @@ export default async function profilesRoutes(fastify: FastifyInstance) {
     fastify.post('/profiles', async (request, reply) => {
         try {
             const profileData = request.body as any
-            fastify.log.info('Creating profile with data:', profileData)
-
             // For now, use a default user ID since we don't have authentication yet
             const userId = profileData.ownerUserId || 'default-user'
             fastify.log.info(`Using userId: ${userId}`)
