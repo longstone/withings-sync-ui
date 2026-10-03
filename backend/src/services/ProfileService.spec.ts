@@ -67,7 +67,7 @@ describe('ProfileService', () => {
         jest.clearAllMocks()
         
         mockCryptoService = {
-            encrypt: jest.fn(),
+            encrypt: jest.fn().mockReturnValue('encrypted-password'),
             decrypt: jest.fn()
         } as any
 
