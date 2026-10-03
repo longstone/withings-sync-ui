@@ -220,6 +220,7 @@ describe('ProfileService', () => {
             const mockTrAccount = { id: 'tr-id', type: 'trainerroad' }
 
             mockPrisma.user.upsert.mockResolvedValue(mockUser)
+            mockConfigDirectoryService.provideProfileDirectory.mockReturnValue('/custom/data/withings-config/generated-uuid')
             mockPrisma.syncProfile.create.mockResolvedValue(mockProfile)
             mockPrisma.serviceAccount.create
                 .mockResolvedValueOnce(mockGarminAccount)
@@ -242,7 +243,7 @@ describe('ProfileService', () => {
                     name: 'Test Profile',
                     ownerUserId: 'user123',
                     id: profileId,
-                    withingsConfigDir: `/app/data/withings-config/${profileId}`,
+                    withingsConfigDir: '/custom/data/withings-config/generated-uuid',
                     enabled: true
                 },
                 include: {
@@ -250,6 +251,8 @@ describe('ProfileService', () => {
                 }
             })
 
+            expect(mockConfigDirectoryService.provideConfigDirectory).toHaveBeenCalled()
+            expect(mockConfigDirectoryService.provideProfileDirectory).toHaveBeenCalledWith(profileId)
             expect(mockPrisma.serviceAccount.create).toHaveBeenCalledTimes(2)
             expect(mockCryptoService.encrypt).toHaveBeenCalledWith('garminPass')
             expect(mockCryptoService.encrypt).toHaveBeenCalledWith('trPass')
@@ -288,73 +291,154 @@ describe('ProfileService', () => {
 
     describe('updateProfile', () => {
         const profileId = 'profile123'
-        const updateData: UpdateProfileData = {
-            name: 'Updated Profile',
-            garminUsername: 'newGarmin',
-            garminPassword: 'newPass',
-            trainerroadUsername: null,
-            trainerroadPassword: null
+
+        const createTransaction = (initialProfile: any) => {
+            const tx = {
+                syncProfile: {
+                    update: jest.fn()
+                },
+                serviceAccount: {
+                    findFirst: jest.fn(),
+                    create: jest.fn(),
+                    update: jest.fn(),
+                    delete: jest.fn()
+                }
+            }
+            tx.syncProfile.update.mockResolvedValue(initialProfile)
+            mockPrisma.$transaction.mockImplementation(async (callback: any) => callback(tx))
+            return tx
         }
 
-        it('should update profile and service accounts', async () => {
-            const mockProfile = { id: profileId, name: 'Updated Profile', ownerUserId: 'user123' }
-            const mockGarminAccount = { id: 'garmin-id', type: 'garmin' }
+        it('should create service accounts when complete credentials are provided', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: null,
+                trainerroadAccountId: null
+            }
+            const tx = createTransaction(profile)
+            tx.serviceAccount.findFirst.mockResolvedValue(null)
+            tx.serviceAccount.create.mockResolvedValue({id: 'garmin-id'})
 
-            mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-                return callback({
-                    syncProfile: {
-                        update: jest.fn().mockResolvedValue(mockProfile)
-                    },
-                    serviceAccount: {
-                        findFirst: jest.fn().mockResolvedValue(null),
-                        create: jest.fn().mockResolvedValue(mockGarminAccount),
-                        update: jest.fn(),
-                        delete: jest.fn()
-                    }
-                })
+            await profileService.updateProfile(profileId, {
+                name: 'Updated Profile',
+                garminUsername: 'newGarmin',
+                garminPassword: 'newPass'
             })
 
-            const result = await profileService.updateProfile(profileId, updateData)
-
-            expect(result).toEqual(mockProfile)
+            expect(tx.serviceAccount.create).toHaveBeenCalledWith({
+                data: {
+                    type: 'garmin',
+                    username: 'newGarmin',
+                    passwordEncrypted: 'encrypted-password',
+                    ownerUserId: 'user123'
+                }
+            })
             expect(mockCryptoService.encrypt).toHaveBeenCalledWith('newPass')
         })
 
-        it('should delete service accounts when credentials are cleared', async () => {
-            const mockProfile = { 
-                id: profileId, 
-                name: 'Updated Profile', 
+        it('should remove Garmin service account when both credentials are explicitly cleared', async () => {
+            const profile = {
+                id: profileId,
                 ownerUserId: 'user123',
-                garminAccountId: 'garmin-id'
+                garminAccountId: 'garmin-id',
+                trainerroadAccountId: null
             }
-
-            mockPrisma.$transaction.mockImplementation(async (callback: any) => {
-                return callback({
-                    syncProfile: {
-                        update: jest.fn().mockResolvedValue(mockProfile)
-                    },
-                    serviceAccount: {
-                        findFirst: jest.fn(),
-                        create: jest.fn(),
-                        update: jest.fn(),
-                        delete: jest.fn()
-                    }
-                })
-            })
+            const tx = createTransaction(profile)
 
             await profileService.updateProfile(profileId, {
                 garminUsername: null,
                 garminPassword: null
             })
 
-            expect(mockLogger.info).toHaveBeenCalledWith(`Updated profile ${profileId}`)
+            expect(tx.syncProfile.update).toHaveBeenLastCalledWith({
+                where: {id: profileId},
+                data: {garminAccountId: null},
+                include: {ownerUser: true}
+            })
+            expect(tx.serviceAccount.delete).toHaveBeenCalledWith({where: {id: 'garmin-id'}})
+        })
+
+        it('should remove TrainerRoad service account when both credentials are explicitly cleared', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: null,
+                trainerroadAccountId: 'trainerroad-id'
+            }
+            const tx = createTransaction(profile)
+
+            await profileService.updateProfile(profileId, {
+                trainerroadUsername: null,
+                trainerroadPassword: null
+            })
+
+            expect(tx.syncProfile.update).toHaveBeenLastCalledWith({
+                where: {id: profileId},
+                data: {trainerroadAccountId: null},
+                include: {ownerUser: true}
+            })
+            expect(tx.serviceAccount.delete).toHaveBeenCalledWith({where: {id: 'trainerroad-id'}})
+        })
+
+        it('should preserve the stored password when only the username changes', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: 'garmin-id',
+                trainerroadAccountId: null
+            }
+            const tx = createTransaction(profile)
+
+            await profileService.updateProfile(profileId, {garminUsername: 'renamed-user'})
+
+            expect(tx.serviceAccount.update).toHaveBeenCalledWith({
+                where: {id: 'garmin-id'},
+                data: {username: 'renamed-user'}
+            })
+            expect(mockCryptoService.encrypt).not.toHaveBeenCalled()
+        })
+
+        it('should preserve the stored username when only the password changes', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: null,
+                trainerroadAccountId: 'trainerroad-id'
+            }
+            const tx = createTransaction(profile)
+
+            await profileService.updateProfile(profileId, {trainerroadPassword: 'replacement'})
+
+            expect(tx.serviceAccount.update).toHaveBeenCalledWith({
+                where: {id: 'trainerroad-id'},
+                data: {passwordEncrypted: 'encrypted-password'}
+            })
+            expect(mockCryptoService.encrypt).toHaveBeenCalledWith('replacement')
+        })
+
+        it('should reject partial credentials when creating a new service account', async () => {
+            const profile = {
+                id: profileId,
+                ownerUserId: 'user123',
+                garminAccountId: null,
+                trainerroadAccountId: null
+            }
+            const tx = createTransaction(profile)
+            tx.serviceAccount.findFirst.mockResolvedValue(null)
+
+            await expect(profileService.updateProfile(profileId, {
+                garminUsername: 'new-user'
+            })).rejects.toThrow('Both username and password are required to configure garmin')
+
+            expect(tx.serviceAccount.create).not.toHaveBeenCalled()
         })
 
         it('should handle errors during profile update', async () => {
             const error = new Error('Update failed')
             mockPrisma.$transaction.mockRejectedValue(error)
 
-            await expect(profileService.updateProfile(profileId, updateData)).rejects.toThrow(error)
+            await expect(profileService.updateProfile(profileId, {name: 'Updated'})).rejects.toThrow(error)
             expect(mockLogger.error).toHaveBeenCalledWith(`Failed to update profile ${profileId}`)
         })
     })
