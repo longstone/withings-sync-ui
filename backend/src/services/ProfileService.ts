@@ -290,6 +290,24 @@ export class ProfileService {
         return {accountId}
     }
 
+    private async deleteServiceAccountIfUnused(
+        tx: Prisma.TransactionClient,
+        accountId: string
+    ): Promise<void> {
+        const remainingReferences = await tx.syncProfile.count({
+            where: {
+                OR: [
+                    {garminAccountId: accountId},
+                    {trainerroadAccountId: accountId}
+                ]
+            }
+        })
+
+        if (remainingReferences === 0) {
+            await tx.serviceAccount.delete({where: {id: accountId}})
+        }
+    }
+
     // Update profile
     async updateProfile(id: string, data: UpdateProfileData) {
         try {
@@ -334,10 +352,10 @@ export class ProfileService {
                 }
 
                 if (garmin.deleteAccountId) {
-                    await tx.serviceAccount.delete({where: {id: garmin.deleteAccountId}})
+                    await this.deleteServiceAccountIfUnused(tx, garmin.deleteAccountId)
                 }
                 if (trainerroad.deleteAccountId) {
-                    await tx.serviceAccount.delete({where: {id: trainerroad.deleteAccountId}})
+                    await this.deleteServiceAccountIfUnused(tx, trainerroad.deleteAccountId)
                 }
 
                 return updatedProfile
