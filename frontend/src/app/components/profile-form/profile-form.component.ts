@@ -101,7 +101,25 @@ this.profile = profile
     this.error = null
 
     if (this.isEdit && this.profile) {
-      this.profileService.updateProfile(this.profile.id, this.formData).subscribe({
+      const updateData: UpdateProfileData = {...this.formData}
+
+      // Credential fields are intentionally blank when loading an existing profile.
+      // Omit untouched blanks so an ordinary edit does not remove stored credentials.
+      // Turning an integration off explicitly sends nulls to remove the account.
+      this.prepareCredentialUpdate(
+        updateData,
+        'garmin',
+        this.garminEnabled,
+        !!this.profile.garminAccountId
+      )
+      this.prepareCredentialUpdate(
+        updateData,
+        'trainerroad',
+        this.trainerroadEnabled,
+        !!this.profile.trainerroadAccountId
+      )
+
+      this.profileService.updateProfile(this.profile.id, updateData).subscribe({
         next: () => {
           this.router.navigate(['/profiles'])
         },
@@ -120,6 +138,32 @@ this.profile = profile
           this.saving = false
         }
       })
+    }
+  }
+
+  private prepareCredentialUpdate(
+    data: UpdateProfileData,
+    service: 'garmin' | 'trainerroad',
+    enabled: boolean,
+    hasStoredAccount: boolean
+  ): void {
+    const usernameKey = service === 'garmin' ? 'garminUsername' : 'trainerroadUsername'
+    const passwordKey = service === 'garmin' ? 'garminPassword' : 'trainerroadPassword'
+
+    if (!enabled) {
+      if (hasStoredAccount) {
+        data[usernameKey] = null
+        data[passwordKey] = null
+      } else {
+        delete data[usernameKey]
+        delete data[passwordKey]
+      }
+      return
+    }
+
+    if (hasStoredAccount && !data[usernameKey] && !data[passwordKey]) {
+      delete data[usernameKey]
+      delete data[passwordKey]
     }
   }
 
