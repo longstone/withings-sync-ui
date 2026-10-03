@@ -4,7 +4,8 @@ import {CryptoService} from '@/services/CryptoService'
 import {existsSync, rmSync, unlinkSync} from 'fs'
 import {WithingsAppConfigService} from '@/services/WithingsAppConfigService'
 import {randomUUID} from 'crypto'
-import {ConfigDirectoryService} from "@/services/ConfigDirectoryService";
+import {ConfigDirectoryService} from '@/services/ConfigDirectoryService'
+import {Prisma} from '@/db/prisma-client-generated/client'
 
 
 export interface CreateProfileData {
@@ -124,12 +125,16 @@ export class ProfileService {
             const newProfileId = randomUUID()
              this.loggerService.info(`Creating profile with ID: ${newProfileId}`)
 
+            // Resolve the profile directory from the configured DATA_DIR.
+            this.configDirectoryService.provideConfigDirectory()
+            const withingsConfigDir = this.configDirectoryService.provideProfileDirectory(newProfileId)
+
             // Create the profile
             const newProfile = await prisma.syncProfile.create({
                 data: {
                     ...profileData,
                     id: newProfileId,
-                    withingsConfigDir: `/app/data/withings-config/${newProfileId}`, // Use profile ID and correct Docker volume path
+                    withingsConfigDir,
                     enabled: data.enabled ?? true
                 },
                 include: {
@@ -214,139 +219,134 @@ export class ProfileService {
         }
     }
 
+    private async syncServiceAccount(
+        tx: Prisma.TransactionClient,
+        type: 'garmin' | 'trainerroad',
+        ownerUserId: string,
+        currentAccountId: string | null,
+        username: string | null | undefined,
+        password: string | null | undefined
+    ): Promise<{accountId: string | null | undefined, deleteAccountId?: string}> {
+        const usernameProvided = username !== undefined
+        const passwordProvided = password !== undefined
+
+        if (!usernameProvided && !passwordProvided) {
+            return {accountId: undefined}
+        }
+
+        const usernameValue = username || undefined
+        const passwordValue = password || undefined
+
+        // Both fields explicitly cleared means the integration should be removed.
+        if (usernameProvided && passwordProvided && !usernameValue && !passwordValue) {
+            return {
+                accountId: null,
+                deleteAccountId: currentAccountId || undefined
+            }
+        }
+
+        let accountId = currentAccountId
+
+        // Preserve the existing behaviour of reusing an account for the same user
+        // when a profile does not currently reference one.
+        if (!accountId) {
+            const existingAccount = await tx.serviceAccount.findFirst({
+                where: {type, ownerUserId}
+            })
+            accountId = existingAccount?.id ?? null
+        }
+
+        if (!accountId) {
+            if (!usernameValue || !passwordValue) {
+                throw new Error(`Both username and password are required to configure ${type}`)
+            }
+
+            const account = await tx.serviceAccount.create({
+                data: {
+                    type,
+                    username: usernameValue,
+                    passwordEncrypted: this.cryptoService.encrypt(passwordValue),
+                    ownerUserId
+                }
+            })
+            return {accountId: account.id}
+        }
+
+        const accountData: {username?: string, passwordEncrypted?: string} = {}
+        if (usernameValue) {
+            accountData.username = usernameValue
+        }
+        if (passwordValue) {
+            accountData.passwordEncrypted = this.cryptoService.encrypt(passwordValue)
+        }
+
+        if (Object.keys(accountData).length > 0) {
+            await tx.serviceAccount.update({
+                where: {id: accountId},
+                data: accountData
+            })
+        }
+
+        return {accountId}
+    }
+
     // Update profile
     async updateProfile(id: string, data: UpdateProfileData) {
         try {
             const profile = await prisma.$transaction(async (tx) => {
-                // Extract credential fields from data
                 const {garminUsername, garminPassword, trainerroadUsername, trainerroadPassword, ...profileData} = data
 
-                // Update the profile
                 let updatedProfile = await tx.syncProfile.update({
                     where: {id},
                     data: profileData,
-                    include: {
-                        ownerUser: true
-                    }
+                    include: {ownerUser: true}
                 })
 
-                // Handle Garmin credentials
-                if ((garminUsername !== undefined || garminPassword !== undefined) && (garminUsername || garminPassword)) {
-                    if (garminUsername && garminPassword) {
-                        // Find existing Garmin ServiceAccount for this user
-                        const existingGarminAccount = await tx.serviceAccount.findFirst({
-                            where: {
-                                type: 'garmin',
-                                ownerUserId: updatedProfile.ownerUserId
-                            }
-                        })
+                const garmin = await this.syncServiceAccount(
+                    tx,
+                    'garmin',
+                    updatedProfile.ownerUserId,
+                    updatedProfile.garminAccountId,
+                    garminUsername,
+                    garminPassword
+                )
+                const trainerroad = await this.syncServiceAccount(
+                    tx,
+                    'trainerroad',
+                    updatedProfile.ownerUserId,
+                    updatedProfile.trainerroadAccountId,
+                    trainerroadUsername,
+                    trainerroadPassword
+                )
 
-                        let garminAccount
-                        if (existingGarminAccount) {
-                            // Update existing ServiceAccount
-                            garminAccount = await tx.serviceAccount.update({
-                                where: {id: existingGarminAccount.id},
-                                data: {
-                                    username: garminUsername,
-                                    passwordEncrypted: this.cryptoService.encrypt(garminPassword)
-                                }
-                            })
-                        } else {
-                            // Create new ServiceAccount
-                            garminAccount = await tx.serviceAccount.create({
-                                data: {
-                                    type: 'garmin',
-                                    username: garminUsername,
-                                    passwordEncrypted: this.cryptoService.encrypt(garminPassword),
-                                    ownerUserId: updatedProfile.ownerUserId
-                                }
-                            })
-                        }
-
-                        // Update profile with ServiceAccount ID
-                        updatedProfile = await tx.syncProfile.update({
-                            where: {id},
-                            data: {garminAccountId: garminAccount.id},
-                            include: {ownerUser: true}
-                        })
-                    } else if (!garminUsername && !garminPassword) {
-                        // Delete existing ServiceAccount if both are empty/null
-                        if (updatedProfile.garminAccountId) {
-                            await tx.serviceAccount.delete({
-                                where: {id: updatedProfile.garminAccountId}
-                            })
-                            // Clear the reference
-                            updatedProfile = await tx.syncProfile.update({
-                                where: {id},
-                                data: {garminAccountId: null},
-                                include: {ownerUser: true}
-                            })
-                        }
-                    }
+                const accountReferences = {
+                    ...(garmin.accountId !== undefined ? {garminAccountId: garmin.accountId} : {}),
+                    ...(trainerroad.accountId !== undefined ? {trainerroadAccountId: trainerroad.accountId} : {})
                 }
 
-                // Handle TrainerRoad credentials
-                if ((trainerroadUsername !== undefined || trainerroadPassword !== undefined) && (trainerroadUsername || trainerroadPassword)) {
-                    if (trainerroadUsername && trainerroadPassword) {
-                        // Find existing TrainerRoad ServiceAccount for this user
-                        const existingTrainerroadAccount = await tx.serviceAccount.findFirst({
-                            where: {
-                                type: 'trainerroad',
-                                ownerUserId: updatedProfile.ownerUserId
-                            }
-                        })
+                // Clear profile references before deleting accounts to keep FK handling safe.
+                if (Object.keys(accountReferences).length > 0) {
+                    updatedProfile = await tx.syncProfile.update({
+                        where: {id},
+                        data: accountReferences,
+                        include: {ownerUser: true}
+                    })
+                }
 
-                        let trainerroadAccount
-                        if (existingTrainerroadAccount) {
-                            // Update existing ServiceAccount
-                            trainerroadAccount = await tx.serviceAccount.update({
-                                where: {id: existingTrainerroadAccount.id},
-                                data: {
-                                    username: trainerroadUsername,
-                                    passwordEncrypted: this.cryptoService.encrypt(trainerroadPassword)
-                                }
-                            })
-                        } else {
-                            // Create new ServiceAccount
-                            trainerroadAccount = await tx.serviceAccount.create({
-                                data: {
-                                    type: 'trainerroad',
-                                    username: trainerroadUsername,
-                                    passwordEncrypted: this.cryptoService.encrypt(trainerroadPassword),
-                                    ownerUserId: updatedProfile.ownerUserId
-                                }
-                            })
-                        }
-
-                        // Update profile with ServiceAccount ID
-                        updatedProfile = await tx.syncProfile.update({
-                            where: {id},
-                            data: {trainerroadAccountId: trainerroadAccount.id},
-                            include: {ownerUser: true}
-                        })
-                    } else if (!trainerroadUsername && !trainerroadPassword) {
-                        // Delete existing ServiceAccount if both are empty/null
-                        if (updatedProfile.trainerroadAccountId) {
-                            await tx.serviceAccount.delete({
-                                where: {id: updatedProfile.trainerroadAccountId}
-                            })
-                            // Clear the reference
-                            updatedProfile = await tx.syncProfile.update({
-                                where: {id},
-                                data: {trainerroadAccountId: null},
-                                include: {ownerUser: true}
-                            })
-                        }
-                    }
+                if (garmin.deleteAccountId) {
+                    await tx.serviceAccount.delete({where: {id: garmin.deleteAccountId}})
+                }
+                if (trainerroad.deleteAccountId) {
+                    await tx.serviceAccount.delete({where: {id: trainerroad.deleteAccountId}})
                 }
 
                 return updatedProfile
             })
 
-             this.loggerService.info(`Updated profile ${id}`)
+            this.loggerService.info(`Updated profile ${id}`)
             return profile
         } catch (error) {
-             this.loggerService.error(`Failed to update profile ${id}`)
+            this.loggerService.error(`Failed to update profile ${id}`)
             throw error
         }
     }
