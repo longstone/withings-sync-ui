@@ -117,3 +117,6 @@ data/
 # Sync secret key file
 data/.sync-secret-key
 /test-results/
+
+# Generated Prisma client
+backend/src/db/prisma-client-generated/
