@@ -40,7 +40,7 @@
     "@angular/cli": "^21.2.24",
     "@angular/compiler-cli": "^21.2.25",
     "jsdom": "^29.0.1",
-    "typescript": "~5.9.2",
+    "typescript": "~7.0.2",
     "vitest": "^4.1.0"
   },
   "overrides": {
